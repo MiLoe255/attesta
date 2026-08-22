@@ -2,7 +2,7 @@
   "name": "attesta",
   "version": "0.1.0",
   "private": true,
-  "description": "Attesta Zyklus, Action, Konsole und Dokumentationsseite. \u00d6ffentlich, FSL-1.1-Apache-2.0.",
+  "description": "Attesta Zyklus, Action, Konsole und Dokumentationsseite. Öffentlich, FSL-1.1-Apache-2.0.",
   "license": "SEE LICENSE IN LICENSE",
   "bin": {
     "attesta": "dist/konsole.js"
@@ -10,6 +10,9 @@
   "scripts": {
     "build": "tsc -p . && node scripts/bundle.mjs",
     "release": "node scripts/release.mjs"
+  },
+  "dependencies": {
+    "@miloe255/attesta-core": "^0.1.0"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",
