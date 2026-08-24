@@ -8,11 +8,14 @@
     "attesta": "dist/konsole.js"
   },
   "scripts": {
-    "build": "tsc -p . && node scripts/bundle.mjs",
+    "generate": "tsx scripts/generate-ursachen.ts",
+    "build": "npm run generate && tsc -p . && node scripts/bundle.mjs",
     "test": "tsx --test test/*.test.ts",
     "release": "node scripts/release.mjs"
   },
   "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0",
     "@miloe255/attesta-core": "^0.1.0",
     "js-yaml": "^4.1.0"
   },
