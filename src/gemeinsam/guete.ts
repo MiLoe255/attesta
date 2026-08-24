@@ -19,9 +19,17 @@
  * - Die Modalverbliste (muss, soll, kann) ist fest im Code, keine eigene
  *   Regelsatzdatei: sie ist Teil der REQ-Schreibkonvention selbst, nicht
  *   projektspezifisch wie Rollen oder Unschaerfewoerter.
+ *
+ * pruefeAnforderungMitRegelsatz() liest Rollen, Unschaerfewoerter und
+ * Technologien aus guete-regelsatz.generated.ts statt live ueber
+ * ladeRollen()/ladeUnschaerfe()/ladeTechnologien() aus attesta-core: die
+ * Action wird vollstaendig gebuendelt, und das private Paket loest seine
+ * rules/-Pfade relativ zum eigenen __dirname auf. Gebuendelt bricht das
+ * mit "Feld * ist nicht lesbar" (live beim End-to-End-Test am 24.08.2026
+ * auf dem Issue-Fundort gefunden, siehe scripts/generate-guete-regelsatz.ts).
  */
-import type { Rolle, UnschaerfeWort } from "./regelsatz";
-import { ladeRollen, ladeTechnologien, ladeUnschaerfe } from "./regelsatz";
+import type { UnschaerfeWort } from "./regelsatz";
+import { GUETE_ROLLEN, GUETE_TECHNOLOGIEN, GUETE_UNSCHAERFE } from "./guete-regelsatz.generated";
 
 export type PruefungsZustand = "erfuellt" | "warnung" | "verletzt";
 
@@ -138,10 +146,11 @@ export function pruefeAnforderung(text: string, regelsatz: GueteRegelsatz): Guet
   return { gesamt, pruefungen };
 }
 
-/** REQ-25: derselbe Programmteil fuer Issue-Text und Datei, hier mit dem echten Regelsatz aus attesta-core geladen. */
+/** REQ-25: derselbe Programmteil fuer Issue-Text und Datei, hier mit dem zur Build-Zeit eingefrorenen Regelsatz aus attesta-core. */
 export function pruefeAnforderungMitRegelsatz(text: string): GueteErgebnis {
-  const rollen = ladeRollen().rollen.map((r: Rolle) => r.anzeigename);
-  const unschaerfe = ladeUnschaerfe().woerter;
-  const technologien = ladeTechnologien().woerter;
-  return pruefeAnforderung(text, { rollen, unschaerfe, technologien });
+  return pruefeAnforderung(text, {
+    rollen: [...GUETE_ROLLEN],
+    unschaerfe: GUETE_UNSCHAERFE as unknown as UnschaerfeWort[],
+    technologien: [...GUETE_TECHNOLOGIEN],
+  });
 }

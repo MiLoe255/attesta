@@ -30926,6 +30926,110 @@ function vergleicheProfilVerzeichnis(profilVerzeichnis, lockPfad, basis) {
   });
 }
 
+// src/gemeinsam/guete-regelsatz.generated.ts
+var GUETE_ROLLEN = [
+  "Auftraggeber",
+  "Fachexperte",
+  "technische Leitung",
+  "Entwicklung",
+  "Reviewer",
+  "Qualitaetssicherung",
+  "Betrieb",
+  "Endnutzer",
+  "KI-Agent"
+];
+var GUETE_UNSCHAERFE = [
+  {
+    "wort": "schnell",
+    "stufe": "verstoss",
+    "hinweis": "Zahl mit Einheit nennen, zum Beispiel Antwortzeit unter 200 ms"
+  },
+  {
+    "wort": "langsam",
+    "stufe": "verstoss",
+    "hinweis": "oberen Schwellwert mit Einheit nennen"
+  },
+  {
+    "wort": "benutzerfreundlich",
+    "stufe": "verstoss",
+    "hinweis": "pruefbares Kriterium nennen, zum Beispiel Aufgabe in unter drei Klicks abschliessbar"
+  },
+  {
+    "wort": "performant",
+    "stufe": "verstoss",
+    "hinweis": "Durchsatz- oder Latenzzahl nennen"
+  },
+  {
+    "wort": "robust",
+    "stufe": "verstoss",
+    "hinweis": "konkreten Fehlerfall und erwartetes Verhalten nennen"
+  },
+  {
+    "wort": "intuitiv",
+    "stufe": "verstoss",
+    "hinweis": "pruefbares Nutzerverhalten nennen, zum Beispiel ohne Schulung bedienbar"
+  },
+  {
+    "wort": "zeitnah",
+    "stufe": "verstoss",
+    "hinweis": "Frist mit Einheit nennen"
+  },
+  {
+    "wort": "angemessen",
+    "stufe": "warnung",
+    "hinweis": "wo moeglich durch eine Zahl oder einen Verweis auf eine Norm ersetzen, Fachbegriff in Normtexten"
+  },
+  {
+    "wort": "m\xF6glichst",
+    "stufe": "verstoss",
+    "hinweis": "verbindliche Formulierung ohne Einschraenkung waehlen"
+  },
+  {
+    "wort": "gegebenenfalls",
+    "stufe": "verstoss",
+    "hinweis": "Bedingung explizit nennen, unter der der Satz gilt"
+  },
+  {
+    "wort": "einfach",
+    "stufe": "verstoss",
+    "hinweis": "konkretes Kriterium nennen, was Einfachheit hier bedeutet"
+  },
+  {
+    "wort": "flexibel",
+    "stufe": "verstoss",
+    "hinweis": "konkrete Variationsbreite nennen"
+  },
+  {
+    "wort": "modern",
+    "stufe": "verstoss",
+    "hinweis": "konkrete Technologie oder Version nennen"
+  },
+  {
+    "wort": "sicher",
+    "stufe": "warnung",
+    "hinweis": "wo moeglich durch eine Zahl, einen Standard oder eine Kontrollliste ersetzen, Fachbegriff in Normtexten"
+  }
+];
+var GUETE_TECHNOLOGIEN = [
+  "github",
+  "gitlab",
+  "azure",
+  "aws",
+  "react",
+  "angular",
+  "vue",
+  "node.js",
+  "python",
+  "typescript",
+  "java",
+  "kubernetes",
+  "docker",
+  "postgresql",
+  "mongodb",
+  "redis",
+  "kafka"
+];
+
 // src/gemeinsam/guete.ts
 var MODALVERBEN = ["muss", "soll", "kann"];
 function normativerSatz(text) {
@@ -31003,10 +31107,11 @@ function pruefeAnforderung(text, regelsatz) {
   return { gesamt, pruefungen };
 }
 function pruefeAnforderungMitRegelsatz(text) {
-  const rollen = (0, import_attesta_core.ladeRollen)().rollen.map((r) => r.anzeigename);
-  const unschaerfe = (0, import_attesta_core.ladeUnschaerfe)().woerter;
-  const technologien = (0, import_attesta_core.ladeTechnologien)().woerter;
-  return pruefeAnforderung(text, { rollen, unschaerfe, technologien });
+  return pruefeAnforderung(text, {
+    rollen: [...GUETE_ROLLEN],
+    unschaerfe: GUETE_UNSCHAERFE,
+    technologien: [...GUETE_TECHNOLOGIEN]
+  });
 }
 
 // src/gemeinsam/meldung.ts
