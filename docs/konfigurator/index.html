@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attesta Zyklus: Konfigurator</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+  h1 { margin-bottom: 0.2rem; }
+  .marke { color: #2A4046; font-weight: 600; }
+  .hinweis { border: 1px solid currentColor; border-radius: 0.4rem; padding: 0.8rem 1rem; margin: 1rem 0; }
+  .datei { margin: 2rem 0; }
+  .datei h2 { font-size: 1rem; }
+  .werkzeuge { display: flex; gap: 0.75rem; align-items: center; margin: 0.4rem 0; }
+  pre { overflow-x: auto; padding: 0.8rem; border: 1px solid #8884; border-radius: 0.4rem; }
+  button { cursor: pointer; }
+  label { display: block; margin-top: 1.5rem; font-weight: 600; }
+  input[type="text"] { width: 100%; box-sizing: border-box; padding: 0.4rem; margin-top: 0.3rem; }
+  footer { margin-top: 3rem; font-size: 0.9rem; opacity: 0.8; }
+</style>
+</head>
+<body>
+<noscript>
+  <p><strong>Diese Seite braucht JavaScript.</strong> Ohne JavaScript nutze stattdessen die Konsole: <code>npx attesta init</code> im eigenen Repository.</p>
+</noscript>
+
+<h1><span class="marke">Attesta Zyklus</span>: Konfigurator</h1>
+<p>Erzeugt Profil, Workflow und Issue-Formular vollstaendig in diesem Browser. Nach dem Laden dieser Seite verlaesst keine Anfrage deinen Rechner in Richtung des Betreibers, und nichts wird hier dauerhaft gespeichert: ein Neuladen leert alle Felder.</p>
+
+<div class="hinweis">
+  <strong>Kein Feld fuer einen Lizenzschluessel.</strong> Der Schluessel gehoert als Repository-Geheimnis <code>ATTESTA_LIZENZSCHLUESSEL</code> unter <em>Settings, Secrets and variables, Actions</em> in dein eigenes Repository, niemals auf eine fremde Seite.
+</div>
+
+<label for="repo">Repository (optional, nur fuer die Anlegen-Links unten, wird nirgends gespeichert)</label>
+<input type="text" id="repo" placeholder="dein-konto/dein-repository" autocomplete="off">
+
+
+      <section class="datei">
+        <h2><code>attesta/profil/kritikalitaet-delegation.yaml</code></h2>
+        <div class="werkzeuge">
+          <button type="button" data-kopieren="datei-0">Kopieren</button>
+          <a href="#" data-anlegen="datei-0" data-pfad="attesta/profil/kritikalitaet-delegation.yaml">Datei im Repository anlegen</a>
+        </div>
+        <pre id="datei-0"><code># Urheber: PROSTRUCTIVE® Consulting &amp; Management
+# Lizenz: PolyForm-Internal-Use-1.0.0
+# Herkunft: 1.0.0
+# Pruefsumme: sha256:25c88a8a752efdbb1cf88bbefcd76f9dc9600065c831065e170948108a552822
+
+# ERZEUGT AUS rules/, Version 1.0.0. Nicht von Hand aendern, siehe scripts/generate.ts.
+# kritikalitaet-delegation.yaml
+
+version: 1.0.0
+kritikalitaet:
+  K1:
+    label: K1 leicht
+    definition: Fehler ist folgenlos oder trivial reversibel
+    typische_faelle:
+      - interne Tools
+      - Prototypen
+      - UI-Kosmetik
+      - Doku
+  K2:
+    label: K2 standard
+    definition: Fehler stoert Nutzer oder Geschaeft, ist aber behebbar
+    typische_faelle:
+      - Kundenfeatures
+      - Standard-Businesslogik
+      - Reports
+  K3:
+    label: K3 kritisch
+    definition: Fehler kostet Geld, Daten, Sicherheit oder Compliance
+    typische_faelle:
+      - Zahlungen
+      - Auth
+      - Datenmigration
+      - irreversible Aktionen
+      - personenbezogene Daten
+      - regulierte Domaenen
+einstufungsfragen:
+  - Verarbeitet oder erzeugt das Arbeitspaket Geld, personenbezogene Daten oder Zugangsdaten? -&gt; mindestens K3.
+  - Ist ein Fehler ohne Datenverlust und ohne Nutzerauswirkung in Minuten rueckgaengig? -&gt; K1.
+  - Betrifft es Kundenvertrauen oder Geschaeftsprozesse, ist aber technisch reparierbar? -&gt; K2.
+  - Bleibt Unsicherheit? -&gt; eine Stufe hoeher als der niedrigste plausible Wert.
+delegation:
+  S1:
+    label: S1 Anweisen
+    modus: eng gefuehrt
+    ki_rolle: setzt exakt Spezifiziertes um
+    mensch_rolle: spezifiziert vollstaendig, prueft jede Zeile
+  S2:
+    label: S2 Coachen
+    modus: Entwurf plus enger Loop
+    ki_rolle: erzeugt Entwuerfe, iteriert am Feedback
+    mensch_rolle: prueft je Komponente
+  S3:
+    label: S3 Unterstuetzen
+    modus: eigenstaendig in Spec-Grenzen
+    ki_rolle: setzt eigenstaendig um
+    mensch_rolle: prueft an Modulgrenze und Gate
+  S4:
+    label: S4 Delegieren
+    modus: autonom in Leitplanken
+    ki_rolle: setzt um, testet, prueft selbst vor
+    mensch_rolle: prueft nur Ergebnis und Gates
+guardrail_regel:
+  bedingung: ohne maschinenlesbare Leitplanken (Coding-Standards, Contracts, automatisierte Tests, CI-Gates, Secret-Scanning)
+  obergrenze: S2
+  unabhaengig_von_k: true
+reifegrundsatz: Reife wird erarbeitet (wiederholt zuverlaessige Ergebnisse), nicht angenommen. Absenkung ist jederzeit erlaubt.
+max_delegation_je_kritikalitaet:
+  label: Max. Delegation
+  K1:
+    wert: S4
+  K2:
+    wert: S3
+  K3:
+    wert: S2
+    ausnahme:
+      wert: S3
+      voraussetzungen:
+        - guardrails_vollstaendig
+        - historie_nachgewiesen
+      hinweis: S3 nur mit vollen Guardrails und nachgewiesener Historie
+</code></pre>
+      </section>
+
+      <section class="datei">
+        <h2><code>attesta/profil/pruefungstiefen.yaml</code></h2>
+        <div class="werkzeuge">
+          <button type="button" data-kopieren="datei-1">Kopieren</button>
+          <a href="#" data-anlegen="datei-1" data-pfad="attesta/profil/pruefungstiefen.yaml">Datei im Repository anlegen</a>
+        </div>
+        <pre id="datei-1"><code># Urheber: PROSTRUCTIVE® Consulting &amp; Management
+# Lizenz: PolyForm-Internal-Use-1.0.0
+# Herkunft: 1.0.0
+# Pruefsumme: sha256:f858100dbacfb334469ead74f1ecbdef6c9fb6636fa428faa75d29eae01b5489
+
+# ERZEUGT AUS rules/, Version 1.0.0. Nicht von Hand aendern, siehe scripts/generate.ts.
+# pruefungstiefen.yaml
+
+version: 1.0.0
+traceability:
+  knoten:
+    - intent
+    - req
+    - spec
+    - contract
+    - code
+    - test
+    - outcome
+  stufen:
+    K1:
+      pfad:
+        - intent
+        - code
+      bidirektional: false
+    K2:
+      pfad:
+        - req
+        - spec
+        - pr
+      bidirektional: false
+    K3:
+      pfad:
+        - intent
+        - req
+        - spec
+        - contract
+        - code
+        - test
+        - outcome
+      bidirektional: true
+      zusatzkanten:
+        - von: test
+          nach: req
+          label: Test-zu-REQ-Nachweis
+pruefungen_je_kritikalitaet:
+  contract_pflicht:
+    label: Contract-Pflicht
+    K1:
+      wert: false
+    K2:
+      wert: bei_modulgrenze
+    K3:
+      wert: true
+      umfang:
+        - api
+        - daten
+        - error
+  testabdeckung:
+    label: Testabdeckung
+    K1:
+      pflicht:
+        - smoke
+    K2:
+      pflicht:
+        - smoke
+        - unit_kernlogik
+    K3:
+      pflicht:
+        - smoke
+        - unit_kernlogik
+        - integration
+        - contract
+  review:
+    label: Review
+    K1:
+      modi:
+        - ki_selfreview
+        - stichprobe
+    K2:
+      modi:
+        - vier_augen
+    K3:
+      modi:
+        - vier_augen
+        - unabhaengiges_ki_zweitreview_frischer_kontext
+  gate_tiefe:
+    label: Gate-Tiefe
+    K1:
+      wert: Ein-Klick-Selbstcheck
+    K2:
+      wert: Standard-Checkliste
+    K3:
+      wert: volle Checkliste plus Freigabe durch Verantwortlichen
+      benannter_freigeber_pflicht: true
+  security:
+    label: Security
+    K1:
+      pflicht:
+        - secret_scan
+    K2:
+      pflicht:
+        - secret_scan
+        - rls_pruefung
+        - auth_pruefung
+    K3:
+      pflicht:
+        - secret_scan
+        - rls_pruefung
+        - auth_pruefung
+        - dast
+        - owasp_check
+        - verschluesselungspruefung
+</code></pre>
+      </section>
+
+      <section class="datei">
+        <h2><code>attesta/profil/wortlisten.yaml</code></h2>
+        <div class="werkzeuge">
+          <button type="button" data-kopieren="datei-2">Kopieren</button>
+          <a href="#" data-anlegen="datei-2" data-pfad="attesta/profil/wortlisten.yaml">Datei im Repository anlegen</a>
+        </div>
+        <pre id="datei-2"><code># Urheber: PROSTRUCTIVE® Consulting &amp; Management
+# Lizenz: PolyForm-Internal-Use-1.0.0
+# Herkunft: 1.0.0
+# Pruefsumme: sha256:df238b73b9cb77bd5ef621750af7127b15ef1e9fe0df5a254880997f7af4724b
+
+# ERZEUGT AUS rules/, Version 1.0.0. Nicht von Hand aendern, siehe scripts/generate.ts.
+# wortlisten.yaml
+
+version: 1.0.0
+rollen:
+  - kennung: auftraggeber
+    anzeigename: Auftraggeber
+    definition: traegt das wirtschaftliche Ergebnis und genehmigt den Projektumfang
+  - kennung: fachexperte
+    anzeigename: Fachexperte
+    definition: kennt die fachlichen Regeln und Ausnahmen der Domaene
+  - kennung: technische_leitung
+    anzeigename: technische Leitung
+    definition: verantwortet Architekturentscheidungen und die technische Machbarkeit des Vorhabens
+  - kennung: entwicklung
+    anzeigename: Entwicklung
+    definition: setzt Anforderungen in lauffaehigen, geprueften Code um
+  - kennung: reviewer
+    anzeigename: Reviewer
+    definition: prueft Arbeitsergebnisse und gibt sie vor dem Merge frei
+  - kennung: qualitaetssicherung
+    anzeigename: Qualitaetssicherung
+    definition: prueft Ergebnisse unabhaengig von der Entwicklung gegen die Abnahmekriterien
+  - kennung: betrieb
+    anzeigename: Betrieb
+    definition: verantwortet den laufenden Betrieb und die Stoerungsbehebung im Produktivsystem
+  - kennung: endnutzer
+    anzeigename: Endnutzer
+    definition: nutzt das fertige System im taeglichen Arbeitsablauf
+  - kennung: ki_agent
+    anzeigename: KI-Agent
+    definition: setzt Arbeitspakete innerhalb der festgelegten Delegationsstufe um
+unschaerfe:
+  - wort: schnell
+    stufe: verstoss
+    hinweis: Zahl mit Einheit nennen, zum Beispiel Antwortzeit unter 200 ms
+  - wort: langsam
+    stufe: verstoss
+    hinweis: oberen Schwellwert mit Einheit nennen
+  - wort: benutzerfreundlich
+    stufe: verstoss
+    hinweis: pruefbares Kriterium nennen, zum Beispiel Aufgabe in unter drei Klicks abschliessbar
+  - wort: performant
+    stufe: verstoss
+    hinweis: Durchsatz- oder Latenzzahl nennen
+  - wort: robust
+    stufe: verstoss
+    hinweis: konkreten Fehlerfall und erwartetes Verhalten nennen
+  - wort: intuitiv
+    stufe: verstoss
+    hinweis: pruefbares Nutzerverhalten nennen, zum Beispiel ohne Schulung bedienbar
+  - wort: zeitnah
+    stufe: verstoss
+    hinweis: Frist mit Einheit nennen
+  - wort: angemessen
+    stufe: warnung
+    hinweis: wo moeglich durch eine Zahl oder einen Verweis auf eine Norm ersetzen, Fachbegriff in Normtexten
+  - wort: möglichst
+    stufe: verstoss
+    hinweis: verbindliche Formulierung ohne Einschraenkung waehlen
+  - wort: gegebenenfalls
+    stufe: verstoss
+    hinweis: Bedingung explizit nennen, unter der der Satz gilt
+  - wort: einfach
+    stufe: verstoss
+    hinweis: konkretes Kriterium nennen, was Einfachheit hier bedeutet
+  - wort: flexibel
+    stufe: verstoss
+    hinweis: konkrete Variationsbreite nennen
+  - wort: modern
+    stufe: verstoss
+    hinweis: konkrete Technologie oder Version nennen
+  - wort: sicher
+    stufe: warnung
+    hinweis: wo moeglich durch eine Zahl, einen Standard oder eine Kontrollliste ersetzen, Fachbegriff in Normtexten
+</code></pre>
+      </section>
+
+      <section class="datei">
+        <h2><code>.github/workflows/attesta.yml</code></h2>
+        <div class="werkzeuge">
+          <button type="button" data-kopieren="datei-3">Kopieren</button>
+          <a href="#" data-anlegen="datei-3" data-pfad=".github/workflows/attesta.yml">Datei im Repository anlegen</a>
+        </div>
+        <pre id="datei-3"><code># Ersetze &lt;ORG&gt; durch den Marketplace-Eintrag, sobald er steht (siehe D1-7).
+# Bis dahin: Fork oder Kopie dieses Repositorys referenzieren.
+name: Attesta Zyklus
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created, edited]
+  workflow_dispatch: {}
+  schedule:
+    # Nicht spezifiziert (SPEC-12): der genaue Tag im Monat. Vorschlag
+    # "erster Werktag" ist in reinem Cron nicht ausdrueckbar, deshalb
+    # vereinfacht auf den ersten Kalendertag.
+    - cron: "0 6 1 * *"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  attesta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: &lt;ORG&gt;/attesta@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Optional. Ohne Schluessel oder mit abgelaufenem Schluessel laeuft
+          # attesta weiter, siehe REQ-35. Anlegen unter Settings, Secrets and
+          # variables, Actions.
+          lizenzschluessel: ${{ secrets.ATTESTA_LIZENZSCHLUESSEL }}
+</code></pre>
+      </section>
+
+      <section class="datei">
+        <h2><code>.github/ISSUE_TEMPLATE/arbeitspaket.yml</code></h2>
+        <div class="werkzeuge">
+          <button type="button" data-kopieren="datei-4">Kopieren</button>
+          <a href="#" data-anlegen="datei-4" data-pfad=".github/ISSUE_TEMPLATE/arbeitspaket.yml">Datei im Repository anlegen</a>
+        </div>
+        <pre id="datei-4"><code>name: Arbeitspaket
+description: Arbeitspaket nach dem K-und-S-Rahmenwerk
+labels: ["arbeitspaket"]
+body:
+  - type: dropdown
+    id: kritikalitaet
+    attributes:
+      label: Kritikalitaet
+      options:
+        - "K1 leicht"
+        - "K2 standard"
+        - "K3 kritisch"
+    validations:
+      required: true
+  - type: dropdown
+    id: delegation
+    attributes:
+      label: Delegationsstufe
+      options:
+        - "S1 Anweisen"
+        - "S2 Coachen"
+        - "S3 Unterstuetzen"
+        - "S4 Delegieren"
+    validations:
+      required: true
+  - type: textarea
+    id: begruendung
+    attributes:
+      label: Begruendung der Einstufung
+      description: mindestens ein bis zwei Saetze
+    validations:
+      required: true
+</code></pre>
+      </section>
+
+<footer>
+  PROSTRUCTIVE&reg; Consulting &amp; Management. Lizenz siehe LICENSE im Repository <code>attesta</code>.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var dateien = [{"pfad":"attesta/profil/kritikalitaet-delegation.yaml","inhalt":"# Urheber: PROSTRUCTIVE® Consulting & Management\n# Lizenz: PolyForm-Internal-Use-1.0.0\n# Herkunft: 1.0.0\n# Pruefsumme: sha256:25c88a8a752efdbb1cf88bbefcd76f9dc9600065c831065e170948108a552822\n\n# ERZEUGT AUS rules/, Version 1.0.0. Nicht von Hand aendern, siehe scripts/generate.ts.\n# kritikalitaet-delegation.yaml\n\nversion: 1.0.0\nkritikalitaet:\n  K1:\n    label: K1 leicht\n    definition: Fehler ist folgenlos oder trivial reversibel\n    typische_faelle:\n      - interne Tools\n      - Prototypen\n      - UI-Kosmetik\n      - Doku\n  K2:\n    label: K2 standard\n    definition: Fehler stoert Nutzer oder Geschaeft, ist aber behebbar\n    typische_faelle:\n      - Kundenfeatures\n      - Standard-Businesslogik\n      - Reports\n  K3:\n    label: K3 kritisch\n    definition: Fehler kostet Geld, Daten, Sicherheit oder Compliance\n    typische_faelle:\n      - Zahlungen\n      - Auth\n      - Datenmigration\n      - irreversible Aktionen\n      - personenbezogene Daten\n      - regulierte Domaenen\neinstufungsfragen:\n  - Verarbeitet oder erzeugt das Arbeitspaket Geld, personenbezogene Daten oder Zugangsdaten? -> mindestens K3.\n  - Ist ein Fehler ohne Datenverlust und ohne Nutzerauswirkung in Minuten rueckgaengig? -> K1.\n  - Betrifft es Kundenvertrauen oder Geschaeftsprozesse, ist aber technisch reparierbar? -> K2.\n  - Bleibt Unsicherheit? -> eine Stufe hoeher als der niedrigste plausible Wert.\ndelegation:\n  S1:\n    label: S1 Anweisen\n    modus: eng gefuehrt\n    ki_rolle: setzt exakt Spezifiziertes um\n    mensch_rolle: spezifiziert vollstaendig, prueft jede Zeile\n  S2:\n    label: S2 Coachen\n    modus: Entwurf plus enger Loop\n    ki_rolle: erzeugt Entwuerfe, iteriert am Feedback\n    mensch_rolle: prueft je Komponente\n  S3:\n    label: S3 Unterstuetzen\n    modus: eigenstaendig in Spec-Grenzen\n    ki_rolle: setzt eigenstaendig um\n    mensch_rolle: prueft an Modulgrenze und Gate\n  S4:\n    label: S4 Delegieren\n    modus: autonom in Leitplanken\n    ki_rolle: setzt um, testet, prueft selbst vor\n    mensch_rolle: prueft nur Ergebnis und Gates\nguardrail_regel:\n  bedingung: ohne maschinenlesbare Leitplanken (Coding-Standards, Contracts, automatisierte Tests, CI-Gates, Secret-Scanning)\n  obergrenze: S2\n  unabhaengig_von_k: true\nreifegrundsatz: Reife wird erarbeitet (wiederholt zuverlaessige Ergebnisse), nicht angenommen. Absenkung ist jederzeit erlaubt.\nmax_delegation_je_kritikalitaet:\n  label: Max. Delegation\n  K1:\n    wert: S4\n  K2:\n    wert: S3\n  K3:\n    wert: S2\n    ausnahme:\n      wert: S3\n      voraussetzungen:\n        - guardrails_vollstaendig\n        - historie_nachgewiesen\n      hinweis: S3 nur mit vollen Guardrails und nachgewiesener Historie\n"},{"pfad":"attesta/profil/pruefungstiefen.yaml","inhalt":"# Urheber: PROSTRUCTIVE® Consulting & Management\n# Lizenz: PolyForm-Internal-Use-1.0.0\n# Herkunft: 1.0.0\n# Pruefsumme: sha256:f858100dbacfb334469ead74f1ecbdef6c9fb6636fa428faa75d29eae01b5489\n\n# ERZEUGT AUS rules/, Version 1.0.0. Nicht von Hand aendern, siehe scripts/generate.ts.\n# pruefungstiefen.yaml\n\nversion: 1.0.0\ntraceability:\n  knoten:\n    - intent\n    - req\n    - spec\n    - contract\n    - code\n    - test\n    - outcome\n  stufen:\n    K1:\n      pfad:\n        - intent\n        - code\n      bidirektional: false\n    K2:\n      pfad:\n        - req\n        - spec\n        - pr\n      bidirektional: false\n    K3:\n      pfad:\n        - intent\n        - req\n        - spec\n        - contract\n        - code\n        - test\n        - outcome\n      bidirektional: true\n      zusatzkanten:\n        - von: test\n          nach: req\n          label: Test-zu-REQ-Nachweis\npruefungen_je_kritikalitaet:\n  contract_pflicht:\n    label: Contract-Pflicht\n    K1:\n      wert: false\n    K2:\n      wert: bei_modulgrenze\n    K3:\n      wert: true\n      umfang:\n        - api\n        - daten\n        - error\n  testabdeckung:\n    label: Testabdeckung\n    K1:\n      pflicht:\n        - smoke\n    K2:\n      pflicht:\n        - smoke\n        - unit_kernlogik\n    K3:\n      pflicht:\n        - smoke\n        - unit_kernlogik\n        - integration\n        - contract\n  review:\n    label: Review\n    K1:\n      modi:\n        - ki_selfreview\n        - stichprobe\n    K2:\n      modi:\n        - vier_augen\n    K3:\n      modi:\n        - vier_augen\n        - unabhaengiges_ki_zweitreview_frischer_kontext\n  gate_tiefe:\n    label: Gate-Tiefe\n    K1:\n      wert: Ein-Klick-Selbstcheck\n    K2:\n      wert: Standard-Checkliste\n    K3:\n      wert: volle Checkliste plus Freigabe durch Verantwortlichen\n      benannter_freigeber_pflicht: true\n  security:\n    label: Security\n    K1:\n      pflicht:\n        - secret_scan\n    K2:\n      pflicht:\n        - secret_scan\n        - rls_pruefung\n        - auth_pruefung\n    K3:\n      pflicht:\n        - secret_scan\n        - rls_pruefung\n        - auth_pruefung\n        - dast\n        - owasp_check\n        - verschluesselungspruefung\n"},{"pfad":"attesta/profil/wortlisten.yaml","inhalt":"# Urheber: PROSTRUCTIVE® Consulting & Management\n# Lizenz: PolyForm-Internal-Use-1.0.0\n# Herkunft: 1.0.0\n# Pruefsumme: sha256:df238b73b9cb77bd5ef621750af7127b15ef1e9fe0df5a254880997f7af4724b\n\n# ERZEUGT AUS rules/, Version 1.0.0. Nicht von Hand aendern, siehe scripts/generate.ts.\n# wortlisten.yaml\n\nversion: 1.0.0\nrollen:\n  - kennung: auftraggeber\n    anzeigename: Auftraggeber\n    definition: traegt das wirtschaftliche Ergebnis und genehmigt den Projektumfang\n  - kennung: fachexperte\n    anzeigename: Fachexperte\n    definition: kennt die fachlichen Regeln und Ausnahmen der Domaene\n  - kennung: technische_leitung\n    anzeigename: technische Leitung\n    definition: verantwortet Architekturentscheidungen und die technische Machbarkeit des Vorhabens\n  - kennung: entwicklung\n    anzeigename: Entwicklung\n    definition: setzt Anforderungen in lauffaehigen, geprueften Code um\n  - kennung: reviewer\n    anzeigename: Reviewer\n    definition: prueft Arbeitsergebnisse und gibt sie vor dem Merge frei\n  - kennung: qualitaetssicherung\n    anzeigename: Qualitaetssicherung\n    definition: prueft Ergebnisse unabhaengig von der Entwicklung gegen die Abnahmekriterien\n  - kennung: betrieb\n    anzeigename: Betrieb\n    definition: verantwortet den laufenden Betrieb und die Stoerungsbehebung im Produktivsystem\n  - kennung: endnutzer\n    anzeigename: Endnutzer\n    definition: nutzt das fertige System im taeglichen Arbeitsablauf\n  - kennung: ki_agent\n    anzeigename: KI-Agent\n    definition: setzt Arbeitspakete innerhalb der festgelegten Delegationsstufe um\nunschaerfe:\n  - wort: schnell\n    stufe: verstoss\n    hinweis: Zahl mit Einheit nennen, zum Beispiel Antwortzeit unter 200 ms\n  - wort: langsam\n    stufe: verstoss\n    hinweis: oberen Schwellwert mit Einheit nennen\n  - wort: benutzerfreundlich\n    stufe: verstoss\n    hinweis: pruefbares Kriterium nennen, zum Beispiel Aufgabe in unter drei Klicks abschliessbar\n  - wort: performant\n    stufe: verstoss\n    hinweis: Durchsatz- oder Latenzzahl nennen\n  - wort: robust\n    stufe: verstoss\n    hinweis: konkreten Fehlerfall und erwartetes Verhalten nennen\n  - wort: intuitiv\n    stufe: verstoss\n    hinweis: pruefbares Nutzerverhalten nennen, zum Beispiel ohne Schulung bedienbar\n  - wort: zeitnah\n    stufe: verstoss\n    hinweis: Frist mit Einheit nennen\n  - wort: angemessen\n    stufe: warnung\n    hinweis: wo moeglich durch eine Zahl oder einen Verweis auf eine Norm ersetzen, Fachbegriff in Normtexten\n  - wort: möglichst\n    stufe: verstoss\n    hinweis: verbindliche Formulierung ohne Einschraenkung waehlen\n  - wort: gegebenenfalls\n    stufe: verstoss\n    hinweis: Bedingung explizit nennen, unter der der Satz gilt\n  - wort: einfach\n    stufe: verstoss\n    hinweis: konkretes Kriterium nennen, was Einfachheit hier bedeutet\n  - wort: flexibel\n    stufe: verstoss\n    hinweis: konkrete Variationsbreite nennen\n  - wort: modern\n    stufe: verstoss\n    hinweis: konkrete Technologie oder Version nennen\n  - wort: sicher\n    stufe: warnung\n    hinweis: wo moeglich durch eine Zahl, einen Standard oder eine Kontrollliste ersetzen, Fachbegriff in Normtexten\n"},{"pfad":".github/workflows/attesta.yml","inhalt":"# Ersetze <ORG> durch den Marketplace-Eintrag, sobald er steht (siehe D1-7).\n# Bis dahin: Fork oder Kopie dieses Repositorys referenzieren.\nname: Attesta Zyklus\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened]\n  issue_comment:\n    types: [created, edited]\n  workflow_dispatch: {}\n  schedule:\n    # Nicht spezifiziert (SPEC-12): der genaue Tag im Monat. Vorschlag\n    # \"erster Werktag\" ist in reinem Cron nicht ausdrueckbar, deshalb\n    # vereinfacht auf den ersten Kalendertag.\n    - cron: \"0 6 1 * *\"\n\npermissions:\n  contents: read\n  issues: write\n  pull-requests: write\n  checks: write\n\njobs:\n  attesta:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: <ORG>/attesta@v1\n        with:\n          github-token: ${{ secrets.GITHUB_TOKEN }}\n          # Optional. Ohne Schluessel oder mit abgelaufenem Schluessel laeuft\n          # attesta weiter, siehe REQ-35. Anlegen unter Settings, Secrets and\n          # variables, Actions.\n          lizenzschluessel: ${{ secrets.ATTESTA_LIZENZSCHLUESSEL }}\n"},{"pfad":".github/ISSUE_TEMPLATE/arbeitspaket.yml","inhalt":"name: Arbeitspaket\ndescription: Arbeitspaket nach dem K-und-S-Rahmenwerk\nlabels: [\"arbeitspaket\"]\nbody:\n  - type: dropdown\n    id: kritikalitaet\n    attributes:\n      label: Kritikalitaet\n      options:\n        - \"K1 leicht\"\n        - \"K2 standard\"\n        - \"K3 kritisch\"\n    validations:\n      required: true\n  - type: dropdown\n    id: delegation\n    attributes:\n      label: Delegationsstufe\n      options:\n        - \"S1 Anweisen\"\n        - \"S2 Coachen\"\n        - \"S3 Unterstuetzen\"\n        - \"S4 Delegieren\"\n    validations:\n      required: true\n  - type: textarea\n    id: begruendung\n    attributes:\n      label: Begruendung der Einstufung\n      description: mindestens ein bis zwei Saetze\n    validations:\n      required: true\n"}];
+
+  function repo() {
+    var feld = document.getElementById("repo");
+    return feld && feld.value.trim();
+  }
+
+  document.querySelectorAll("[data-kopieren]").forEach(function (knopf) {
+    knopf.addEventListener("click", function () {
+      var ziel = document.getElementById(knopf.getAttribute("data-kopieren"));
+      var text = ziel ? ziel.textContent : "";
+      if (navigator.clipboard && text) {
+        navigator.clipboard.writeText(text).then(function () {
+          var alt = knopf.textContent;
+          knopf.textContent = "Kopiert";
+          setTimeout(function () { knopf.textContent = alt; }, 1500);
+        });
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-anlegen]").forEach(function (link) {
+    link.addEventListener("click", function (ereignis) {
+      var name = repo();
+      if (!name) {
+        ereignis.preventDefault();
+        window.alert("Repository-Feld ausfuellen, zum Beispiel dein-konto/dein-repository.");
+        return;
+      }
+      var pfad = link.getAttribute("data-pfad");
+      var eintrag = dateien.filter(function (d) { return d.pfad === pfad; })[0];
+      var inhalt = eintrag ? eintrag.inhalt : "";
+      link.setAttribute(
+        "href",
+        "https://github.com/" + encodeURIComponent(name).replace(/%2F/g, "/") +
+          "/new/main?filename=" + encodeURIComponent(pfad) + "&value=" + encodeURIComponent(inhalt)
+      );
+    });
+  });
+})();
+</script>
+</body>
+</html>

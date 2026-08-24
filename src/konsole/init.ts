@@ -8,12 +8,10 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { dump } from "js-yaml";
 import { ladeProfilBasis } from "../gemeinsam/regelsatz";
-import { formatiereKopfzeile } from "../gemeinsam/kopfzeile";
+import { formatiereProfildatei } from "../gemeinsam/profildatei";
 import { KonsoleFehler } from "../gemeinsam/fehler";
 import type { Lock } from "../gemeinsam/profilvergleich";
 import type { Befehl } from "./befehl";
-
-const PROFIL_LIZENZ = "PolyForm-Internal-Use-1.0.0" as const;
 
 export interface InitErgebnis {
   profilVerzeichnis: string;
@@ -52,10 +50,7 @@ export function fuehreInitAus(zielVerzeichnis: string, optionen: InitOptionen = 
   const geschriebeneDateien: string[] = [];
 
   for (const datei of basis.dateien) {
-    const inhalt =
-      formatiereKopfzeile({ lizenz: PROFIL_LIZENZ, herkunft: basis.basisversion }) +
-      `# Pruefsumme: ${datei.pruefsumme}\n\n` +
-      datei.inhalt;
+    const inhalt = formatiereProfildatei(datei, basis.basisversion);
     const ziel = join(profilVerzeichnis, datei.dateiname);
     writeFileSync(ziel, inhalt, "utf-8");
     geschriebeneDateien.push(ziel);

@@ -3072,6 +3072,14 @@ function formatiereKopfzeile(felder) {
   return [`# Urheber: ${URHEBER}`, `# Lizenz: ${felder.lizenz}`, `# Herkunft: ${felder.herkunft}`].join("\n") + "\n";
 }
 
+// src/gemeinsam/profildatei.ts
+var PROFIL_LIZENZ = "PolyForm-Internal-Use-1.0.0";
+function formatiereProfildatei(datei, basisversion) {
+  return formatiereKopfzeile({ lizenz: PROFIL_LIZENZ, herkunft: basisversion }) + `# Pruefsumme: ${datei.pruefsumme}
+
+` + datei.inhalt;
+}
+
 // src/gemeinsam/fehler.ts
 var KonsoleFehler = class extends Error {
   rueckgabewert;
@@ -3083,7 +3091,6 @@ var KonsoleFehler = class extends Error {
 };
 
 // src/konsole/init.ts
-var PROFIL_LIZENZ = "PolyForm-Internal-Use-1.0.0";
 function fuehreInitAus(zielVerzeichnis, optionen = {}) {
   const ueberschreiben = optionen.ueberschreiben ?? false;
   const jetzt = optionen.jetzt ?? (() => (/* @__PURE__ */ new Date()).toISOString());
@@ -3104,9 +3111,7 @@ function fuehreInitAus(zielVerzeichnis, optionen = {}) {
   const lock = {};
   const geschriebeneDateien = [];
   for (const datei of basis.dateien) {
-    const inhalt = formatiereKopfzeile({ lizenz: PROFIL_LIZENZ, herkunft: basis.basisversion }) + `# Pruefsumme: ${datei.pruefsumme}
-
-` + datei.inhalt;
+    const inhalt = formatiereProfildatei(datei, basis.basisversion);
     const ziel = (0, import_node_path.join)(profilVerzeichnis, datei.dateiname);
     (0, import_node_fs.writeFileSync)(ziel, inhalt, "utf-8");
     geschriebeneDateien.push(ziel);
