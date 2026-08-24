@@ -11,6 +11,7 @@ import { ladeProfilBasis } from "../gemeinsam/regelsatz";
 import { formatiereKopfzeile } from "../gemeinsam/kopfzeile";
 import { KonsoleFehler } from "../gemeinsam/fehler";
 import type { Lock } from "../gemeinsam/profilvergleich";
+import type { Befehl } from "./befehl";
 
 const PROFIL_LIZENZ = "PolyForm-Internal-Use-1.0.0" as const;
 
@@ -69,3 +70,18 @@ export function fuehreInitAus(zielVerzeichnis: string, optionen: InitOptionen = 
 
   return { profilVerzeichnis, lockPfad, geschriebeneDateien };
 }
+
+export const initBefehl: Befehl = {
+  name: "init",
+  hilfe(): void {
+    console.log("attesta init [--ueberschreiben]");
+    console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
+    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock");
+  },
+  fuehreAus(argv: string[]): number {
+    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben: argv.includes("--ueberschreiben") });
+    for (const datei of ergebnis.geschriebeneDateien) console.log(`geschrieben: ${datei}`);
+    console.log(`geschrieben: ${ergebnis.lockPfad}`);
+    return 0;
+  },
+};

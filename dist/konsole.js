@@ -3119,42 +3119,96 @@ function fuehreInitAus(zielVerzeichnis, optionen = {}) {
   (0, import_node_fs.writeFileSync)(lockPfad, dump(lock, { lineWidth: -1, noRefs: true }), "utf-8");
   return { profilVerzeichnis, lockPfad, geschriebeneDateien };
 }
-
-// src/konsole/index.ts
-function druckeHilfeInit() {
-  console.log("attesta init [--ueberschreiben]");
-  console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
-  console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock");
-}
-function fuehreAus(argv) {
-  const [befehl, ...rest] = argv;
-  if (befehl === "init") {
-    if (rest.includes("--help")) {
-      druckeHilfeInit();
-      return 0;
-    }
-    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben: rest.includes("--ueberschreiben") });
+var initBefehl = {
+  name: "init",
+  hilfe() {
+    console.log("attesta init [--ueberschreiben]");
+    console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
+    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock");
+  },
+  fuehreAus(argv) {
+    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben: argv.includes("--ueberschreiben") });
     for (const datei of ergebnis.geschriebeneDateien) console.log(`geschrieben: ${datei}`);
     console.log(`geschrieben: ${ergebnis.lockPfad}`);
     return 0;
   }
-  if (befehl === "pruefen" || befehl === "guete" || befehl === "kennzahlen") {
-    console.log(`attesta ${befehl}: noch nicht implementiert, siehe Arbeitspaket 5 (REQ-11 bis REQ-13)`);
+};
+
+// src/konsole/pruefen.ts
+var pruefenBefehl = {
+  name: "pruefen",
+  hilfe() {
+    console.log("attesta pruefen <Pfad>");
+    console.log("  Eingabe:  Pfad im Kundenrepository");
+    console.log("  Ausgabe:  Befundliste, Rueckgabewert 0 ohne Befund, 1 bei Befund");
+  },
+  fuehreAus() {
+    console.log("attesta pruefen: fachliche Pruefung noch nicht implementiert");
     return 0;
   }
-  console.error("Unbekannter Befehl. Verfuegbar: init, pruefen, guete, kennzahlen");
-  return 2;
+};
+
+// src/konsole/guete.ts
+var gueteBefehl = {
+  name: "guete",
+  hilfe() {
+    console.log("attesta guete <Pfad|Issue-Nummer>");
+    console.log("  Eingabe:  Pfad im Repository oder Issue-Nummer");
+    console.log("  Ausgabe:  Gueteliste je Anforderung, Rueckgabewert 0 ohne Befund, 1 bei Befund");
+  },
+  fuehreAus() {
+    console.log("attesta guete: sechs Pruefungen noch nicht implementiert, siehe REQ-24 bis REQ-26");
+    return 0;
+  }
+};
+
+// src/konsole/kennzahlen.ts
+var kennzahlenBefehl = {
+  name: "kennzahlen",
+  hilfe() {
+    console.log("attesta kennzahlen --probe");
+    console.log("  Eingabe:  keine");
+    console.log("  Ausgabe:  Datensatz im Klartext, sendet nichts");
+  },
+  fuehreAus(argv) {
+    if (!argv.includes("--probe")) {
+      console.log("attesta kennzahlen: nur --probe ist unterstuetzt, es wird nichts gesendet");
+      return 0;
+    }
+    console.log("attesta kennzahlen --probe: Datensatz noch nicht implementiert, gesperrt durch D2-13");
+    return 0;
+  }
+};
+
+// src/konsole/index.ts
+var BEFEHLE = [initBefehl, pruefenBefehl, gueteBefehl, kennzahlenBefehl];
+function findeBefehl(name) {
+  return BEFEHLE.find((b) => b.name === name);
 }
-function main() {
+function fuehreAus(argv) {
+  const [name, ...rest] = argv;
+  const befehl = findeBefehl(name);
+  if (!befehl) {
+    console.error(`Unbekannter Befehl. Verfuegbar: ${BEFEHLE.map((b) => b.name).join(", ")}`);
+    return 2;
+  }
+  if (rest.includes("--help")) {
+    befehl.hilfe();
+    return 0;
+  }
+  return befehl.fuehreAus(rest);
+}
+function fuehreAusMitFehlerbehandlung(argv) {
   try {
-    process.exitCode = fuehreAus(process.argv.slice(2));
+    return fuehreAus(argv);
   } catch (e) {
     if (e instanceof KonsoleFehler) {
       console.error(`Befund: ${e.message}`);
-      process.exitCode = e.rueckgabewert;
-      return;
+      return e.rueckgabewert;
     }
     throw e;
   }
 }
-main();
+
+// src/konsole/cli.ts
+process.exitCode = fuehreAusMitFehlerbehandlung(process.argv.slice(2));

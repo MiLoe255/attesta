@@ -10,7 +10,7 @@ await build({
 });
 
 await build({
-  entryPoints: ["src/konsole/index.ts"],
+  entryPoints: ["src/konsole/cli.ts"],
   bundle: true,
   platform: "node",
   target: "node20",
