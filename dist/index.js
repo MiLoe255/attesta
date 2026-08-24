@@ -31015,6 +31015,85 @@ function formatiereBefund(felder) {
   return felder.fundort ? `${basis} (${felder.fundort})` : basis;
 }
 
+// src/gemeinsam/delegationsreife.ts
+function bestimmeDelegationsreife(b) {
+  const fehlend = [];
+  if (!b.stufe1.profilVorhanden) fehlend.push("Profil (attesta/profil/)");
+  if (!b.stufe1.issueFormularVorhanden) fehlend.push("Issue-Formular (.github/ISSUE_TEMPLATE/arbeitspaket.yml)");
+  const stufe1 = b.stufe1.profilVorhanden && b.stufe1.issueFormularVorhanden;
+  if (!b.stufe2.pruefungenVerbindlich) fehlend.push("verbindliche Pruefungen (Indiz aus PR-Historie)");
+  if (!b.stufe2.vierAugenBelegt) fehlend.push("belegte Vier-Augen-Freigabe");
+  if (!b.stufe2.keinSelbstMerge) fehlend.push("kein Selbst-Merge");
+  const stufe2 = stufe1 && b.stufe2.pruefungenVerbindlich && b.stufe2.vierAugenBelegt && b.stufe2.keinSelbstMerge;
+  if (!b.stufe3.leitplankenMaschinenlesbar) fehlend.push("maschinenlesbare Leitplanken");
+  if (!b.stufe3.gate3Durchlaufen) fehlend.push("durchlaufenes Gate 3 (kein automatischer Nachweis vorgesehen)");
+  const stufe3 = stufe2 && b.stufe3.leitplankenMaschinenlesbar && b.stufe3.gate3Durchlaufen;
+  const stufe = stufe3 ? 3 : stufe2 ? 2 : 1;
+  return { stufe, fehlend };
+}
+
+// src/action/delegationsreife-ermittlung.ts
+var STICHPROBENGROESSE = 10;
+var MINDESTANZAHL_FUER_INDIZ = 3;
+async function existiertDatei(client, ziel, pfad) {
+  try {
+    await client.rest.repos.getContent({ owner: ziel.owner, repo: ziel.repo, path: pfad, ref: ziel.branch });
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function ermittleStufe1(client, ziel) {
+  const [profilVorhanden, issueFormularVorhanden] = await Promise.all([
+    existiertDatei(client, ziel, "attesta/profil.lock"),
+    existiertDatei(client, ziel, ".github/ISSUE_TEMPLATE/arbeitspaket.yml")
+  ]);
+  return { profilVorhanden, issueFormularVorhanden };
+}
+async function ermittleStufe2(client, ziel) {
+  const { data: liste } = await client.rest.pulls.list({ owner: ziel.owner, repo: ziel.repo, state: "closed", per_page: STICHPROBENGROESSE, sort: "updated", direction: "desc" });
+  const gemergteNummern = liste.filter((pr) => pr.merged_at).map((pr) => pr.number);
+  if (gemergteNummern.length < MINDESTANZAHL_FUER_INDIZ) {
+    return { pruefungenVerbindlich: false, vierAugenBelegt: false, keinSelbstMerge: false };
+  }
+  const gemergte = await Promise.all(gemergteNummern.map((nummer) => client.rest.pulls.get({ owner: ziel.owner, repo: ziel.repo, pull_number: nummer }).then((r) => r.data)));
+  let keinSelbstMerge = true;
+  let vierAugenBelegt = true;
+  let pruefungenVerbindlich = true;
+  for (const pr of gemergte) {
+    if (!pr.merged_by || pr.merged_by.login === pr.user?.login) keinSelbstMerge = false;
+    const { data: reviews } = await client.rest.pulls.listReviews({ owner: ziel.owner, repo: ziel.repo, pull_number: pr.number });
+    if (!reviews.some((r) => r.state === "APPROVED" && r.user?.login !== pr.user?.login)) vierAugenBelegt = false;
+    const ref = pr.merge_commit_sha;
+    if (!ref) {
+      pruefungenVerbindlich = false;
+      continue;
+    }
+    const { data: checks } = await client.rest.checks.listForRef({ owner: ziel.owner, repo: ziel.repo, ref });
+    if (checks.check_runs.length === 0 || !checks.check_runs.every((c) => c.conclusion === "success")) {
+      pruefungenVerbindlich = false;
+    }
+  }
+  return { pruefungenVerbindlich, vierAugenBelegt, keinSelbstMerge };
+}
+async function ermittleStufe3(client, ziel) {
+  const workflowVerzeichnis = await (async () => {
+    try {
+      const { data } = await client.rest.repos.getContent({ owner: ziel.owner, repo: ziel.repo, path: ".github/workflows", ref: ziel.branch });
+      return Array.isArray(data) && data.length > 0;
+    } catch {
+      return false;
+    }
+  })();
+  const [claudeMd, agentsMd] = await Promise.all([existiertDatei(client, ziel, "CLAUDE.md"), existiertDatei(client, ziel, "AGENTS.md")]);
+  const leitplankenMaschinenlesbar = workflowVerzeichnis && (claudeMd || agentsMd);
+  return { leitplankenMaschinenlesbar, gate3Durchlaufen: false };
+}
+async function ermittleStufenBedingungen(client, ziel) {
+  const [stufe1, stufe2, stufe3] = await Promise.all([ermittleStufe1(client, ziel), ermittleStufe2(client, ziel), ermittleStufe3(client, ziel)]);
+  return { stufe1, stufe2, stufe3 };
+}
+
 // src/action/index.ts
 var ZEITGRENZE_MS = 6e4;
 var ATTESTA_YML = "attesta.yml";
@@ -31047,6 +31126,13 @@ async function behandleGrundlauf(octokit, owner, repo, prNummer, branch, sha) {
   let zusammenfassung = "Regelpruefung noch nicht implementiert, siehe REQ-24 bis REQ-26. Kein Befund ausgewiesen.";
   if (offeneNotfaelle.length > 0) zusammenfassung += " Notfallpfad aktiv, siehe attesta/notfaelle/.";
   if (konfiguration.beobachtungsmodus) zusammenfassung += " Beobachtungsmodus eingeschaltet.";
+  try {
+    const bedingungen = await ermittleStufenBedingungen(octokit, { owner, repo, branch });
+    const reife = bestimmeDelegationsreife(bedingungen);
+    zusammenfassung += ` Delegationsreife: Stufe ${reife.stufe}.`;
+  } catch (e) {
+    core2.warning(`Delegationsreife nicht ermittelbar: ${e instanceof Error ? e.message : String(e)}`);
+  }
   try {
     await mitWiederholungBeiRatenbegrenzung(
       () => erzeugeCheckRun(octokit, { owner, repo, sha }, { zustand, titel: "Attesta Zyklus", zusammenfassung })

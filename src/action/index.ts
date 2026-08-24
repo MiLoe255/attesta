@@ -2,8 +2,9 @@
  * Einstiegspunkt der Action. Arbeitspaket 7 (REQ-16 bis REQ-19),
  * Arbeitspaket 8 (REQ-20, REQ-21), Arbeitspaket 9 (REQ-22, REQ-23),
  * Arbeitspaket 11 (REQ-27, REQ-30, REQ-31), Arbeitspaket 13 (REQ-34,
- * REQ-35), Arbeitspaket 14 (REQ-36 bis REQ-38) und Arbeitspaket 10
- * (REQ-24, REQ-25). Vier Rechte, ein Ziel fuer jeden Netzaufruf
+ * REQ-35), Arbeitspaket 14 (REQ-36 bis REQ-38), Arbeitspaket 10
+ * (REQ-24, REQ-25) und Arbeitspaket 12 (REQ-32, Stufen 1 bis 3). Vier
+ * Rechte, ein Ziel fuer jeden Netzaufruf
  * (api.github.com, siehe github.ts), ein fester Kommentar, ein
  * Check-Run, Notfallpfad und Beobachtungsmodus als Ueberschreibung des
  * Check-Run-Zustands, Ursachencode als Datei, Lizenzhinweis,
@@ -41,6 +42,8 @@ import { ladeProfilBasis } from "../gemeinsam/regelsatz";
 import { vergleicheProfilVerzeichnis, type ProfilBefund } from "../gemeinsam/profilvergleich";
 import { pruefeAnforderungMitRegelsatz } from "../gemeinsam/guete";
 import { formatiereBefund } from "../gemeinsam/meldung";
+import { bestimmeDelegationsreife } from "../gemeinsam/delegationsreife";
+import { ermittleStufenBedingungen } from "./delegationsreife-ermittlung";
 
 const ZEITGRENZE_MS = 60_000;
 const ATTESTA_YML = "attesta.yml";
@@ -81,6 +84,15 @@ async function behandleGrundlauf(octokit: Octokit, owner: string, repo: string, 
   let zusammenfassung = "Regelpruefung noch nicht implementiert, siehe REQ-24 bis REQ-26. Kein Befund ausgewiesen.";
   if (offeneNotfaelle.length > 0) zusammenfassung += " Notfallpfad aktiv, siehe attesta/notfaelle/.";
   if (konfiguration.beobachtungsmodus) zusammenfassung += " Beobachtungsmodus eingeschaltet.";
+
+  // REQ-32 Abnahme 3: die Delegationsreife erscheint als Zeile im Check-Run.
+  try {
+    const bedingungen = await ermittleStufenBedingungen(octokit, { owner, repo, branch });
+    const reife = bestimmeDelegationsreife(bedingungen);
+    zusammenfassung += ` Delegationsreife: Stufe ${reife.stufe}.`;
+  } catch (e) {
+    core.warning(`Delegationsreife nicht ermittelbar: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   try {
     await mitWiederholungBeiRatenbegrenzung(() =>
