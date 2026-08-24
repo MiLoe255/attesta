@@ -40,7 +40,7 @@ import { ladeAlleUrsachen, schreibeUrsache } from "./ursachenspeicher";
 import { formatiereLizenzhinweis, istHinweisDringend, pruefeLizenz } from "../gemeinsam/lizenz";
 import { erzeugeBerichtsinhalt } from "./bericht";
 import { stelleBerichtBereit, type BerichtPrClient } from "./berichtpr";
-import { ladeProfilBasis } from "../gemeinsam/regelsatz";
+import { PROFILBASIS } from "../gemeinsam/profilbasis.generated";
 import { vergleicheProfilVerzeichnis, type ProfilBefund } from "../gemeinsam/profilvergleich";
 import { pruefeAnforderungMitRegelsatz } from "../gemeinsam/guete";
 import { formatiereBefund } from "../gemeinsam/meldung";
@@ -257,9 +257,8 @@ async function behandleMonatsbericht(octokit: Octokit, owner: string, repo: stri
 
   let profilBefunde: ProfilBefund[] = [];
   try {
-    const basis = ladeProfilBasis();
     const wurzel = arbeitsverzeichnis();
-    profilBefunde = vergleicheProfilVerzeichnis(`${wurzel}/attesta/profil`, `${wurzel}/attesta/profil.lock`, basis);
+    profilBefunde = vergleicheProfilVerzeichnis(`${wurzel}/attesta/profil`, `${wurzel}/attesta/profil.lock`, PROFILBASIS);
   } catch (e) {
     core.warning(`Profilvergleich fuer den Bericht nicht moeglich: ${e instanceof Error ? e.message : String(e)}`);
   }

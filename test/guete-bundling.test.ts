@@ -22,3 +22,9 @@ test("gemeinsam/guete.ts importiert ladeRollen/ladeUnschaerfe/ladeTechnologien n
   }
   assert.match(inhalt, /guete-regelsatz\.generated/);
 });
+
+test("action/index.ts ruft ladeProfilBasis() nicht live auf, nutzt profilbasis.generated stattdessen", () => {
+  const inhalt = readFileSync(join(__dirname, "..", "src", "action", "index.ts"), "utf-8");
+  assert.doesNotMatch(inhalt, /ladeProfilBasis\(\)/);
+  assert.match(inhalt, /profilbasis\.generated/);
+});
