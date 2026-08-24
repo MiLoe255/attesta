@@ -1,10 +1,12 @@
 /**
  * Einstiegspunkt der Action. Arbeitspaket 7 (REQ-16 bis REQ-19),
- * Arbeitspaket 8 (REQ-20, REQ-21), Arbeitspaket 9 (REQ-22, REQ-23) und
- * Arbeitspaket 11 (REQ-27, REQ-30, REQ-31). Vier Rechte, ein Ziel fuer
- * jeden Netzaufruf (api.github.com, siehe github.ts), ein fester
+ * Arbeitspaket 8 (REQ-20, REQ-21), Arbeitspaket 9 (REQ-22, REQ-23),
+ * Arbeitspaket 11 (REQ-27, REQ-30, REQ-31), Arbeitspaket 13 (REQ-34,
+ * REQ-35) und Arbeitspaket 14 (REQ-36 bis REQ-38). Vier Rechte, ein Ziel
+ * fuer jeden Netzaufruf (api.github.com, siehe github.ts), ein fester
  * Kommentar, ein Check-Run, Notfallpfad und Beobachtungsmodus als
- * Ueberschreibung des Check-Run-Zustands, Ursachencode als Datei.
+ * Ueberschreibung des Check-Run-Zustands, Ursachencode als Datei,
+ * Lizenzhinweis, Monatsbericht als Pull Request.
  *
  * Die eigentliche Regelpruefung (REQ-24 bis REQ-26) ist hier bewusst
  * nicht enthalten, der Zustand des Check-Runs bleibt bis dahin ein
@@ -23,12 +25,16 @@ import { istUrsachenBefehl, werteBefehlAus } from "./befehle";
 import { RechteFehler, ZeitgrenzeFehler, mitWiederholungBeiRatenbegrenzung, mitZeitgrenze, pruefeAufRechtefehler } from "./fehlerbehandlung";
 import { ladeKonfiguration } from "./konfiguration";
 import { erzeugeNotfall, istNotfallBefehl } from "./notfall";
-import { ladeOffeneNotfaelle, schreibeNotfall } from "./notfallspeicher";
+import { ladeAlleNotfaelle, ladeOffeneNotfaelle, schreibeNotfall } from "./notfallspeicher";
 import { wendeUeberschreibungenAn } from "./zustandsueberschreibung";
 import { ermittleFreigaberecht } from "./freigabe";
 import { erzeugeUrsachendatei, type UrsachenKennung } from "./ursachendatei";
-import { schreibeUrsache } from "./ursachenspeicher";
+import { ladeAlleUrsachen, schreibeUrsache } from "./ursachenspeicher";
 import { formatiereLizenzhinweis, istHinweisDringend, pruefeLizenz } from "../gemeinsam/lizenz";
+import { erzeugeBerichtsinhalt } from "./bericht";
+import { stelleBerichtBereit, type BerichtPrClient } from "./berichtpr";
+import { ladeProfilBasis } from "../gemeinsam/regelsatz";
+import { vergleicheProfilVerzeichnis, type ProfilBefund } from "../gemeinsam/profilvergleich";
 
 const ZEITGRENZE_MS = 60_000;
 const ATTESTA_YML = "attesta.yml";
@@ -154,6 +160,38 @@ async function behandleKommentarEreignis(octokit: Octokit, owner: string, repo: 
   }
 }
 
+/**
+ * Monatsbericht, Arbeitspaket 14 (REQ-36 bis REQ-38). Wird von einem
+ * planbaren Ereignis ausgeloest (schedule oder workflow_dispatch); der
+ * eigentliche Zeitplan (Tag im Monat, SPEC-12 nicht spezifiziert, erster
+ * Werktag vorgeschlagen) steht in der Workflow-Datei des Kunden, die
+ * dieses Arbeitspaket nicht erzeugt.
+ */
+async function behandleMonatsbericht(octokit: Octokit, owner: string, repo: string): Promise<void> {
+  const berichtClient = octokit as unknown as BerichtPrClient;
+  const { data: repoDaten } = await octokit.rest.repos.get({ owner, repo });
+  const standardBranch = repoDaten.default_branch;
+  const monat = new Date().toISOString().slice(0, 7);
+
+  const [ursachen, notfaelle] = await Promise.all([
+    ladeAlleUrsachen(octokit, { owner, repo, branch: standardBranch }),
+    ladeAlleNotfaelle(octokit, { owner, repo, branch: standardBranch }),
+  ]);
+
+  let profilBefunde: ProfilBefund[] = [];
+  try {
+    const basis = ladeProfilBasis();
+    const wurzel = arbeitsverzeichnis();
+    profilBefunde = vergleicheProfilVerzeichnis(`${wurzel}/attesta/profil`, `${wurzel}/attesta/profil.lock`, basis);
+  } catch (e) {
+    core.warning(`Profilvergleich fuer den Bericht nicht moeglich: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  const inhalt = erzeugeBerichtsinhalt({ monat, ursachen, notfaelle, profilBefunde, jetzt: new Date() });
+  const ergebnis = await stelleBerichtBereit(berichtClient, { owner, repo, standardBranch }, monat, inhalt);
+  core.info(`Monatsbericht ${ergebnis.neu ? "erstellt" : "aktualisiert"}: PR #${ergebnis.prNummer} auf ${ergebnis.branch}`);
+}
+
 async function fuehreAus(): Promise<void> {
   const token = core.getInput("github-token") || process.env.GITHUB_TOKEN;
   if (!token) {
@@ -174,6 +212,11 @@ async function fuehreAus(): Promise<void> {
 
   if (context.eventName === "issue_comment") {
     await behandleKommentarEreignis(octokit, owner, repo);
+    return;
+  }
+
+  if (context.eventName === "schedule" || context.eventName === "workflow_dispatch") {
+    await behandleMonatsbericht(octokit, owner, repo);
     return;
   }
 

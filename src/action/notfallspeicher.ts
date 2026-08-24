@@ -3,15 +3,14 @@
  * Logik (Frist, Zustand, Zaehler) steht in notfall.ts, hier nur die
  * Ein-/Ausgabe darauf aufgesetzt.
  */
-import { dump, load } from "js-yaml";
+import { dump } from "js-yaml";
 import { legeDateiAb, type DateiablageClient } from "./dateiablage";
+import { ladeYamlDateien, type VerzeichnisZiel } from "./verzeichnislistung";
 import { istAktiv, pfadFuerNotfall, type Notfall } from "./notfall";
 
-export interface NotfallZiel {
-  owner: string;
-  repo: string;
-  branch: string;
-}
+export type NotfallZiel = VerzeichnisZiel;
+
+const NOTFALL_VERZEICHNIS = "attesta/notfaelle";
 
 export async function schreibeNotfall(client: DateiablageClient, ziel: NotfallZiel, notfall: Notfall): Promise<string> {
   const pfad = pfadFuerNotfall(notfall);
@@ -19,31 +18,13 @@ export async function schreibeNotfall(client: DateiablageClient, ziel: NotfallZi
   return pfad;
 }
 
-interface VerzeichnisEintrag {
-  name: string;
-  path: string;
-  type: string;
+/** Alle Notfaelle des Repositorys, ungefiltert. Fuer den Monatsbericht (Arbeitspaket 14). */
+export async function ladeAlleNotfaelle(client: DateiablageClient, ziel: NotfallZiel): Promise<Notfall[]> {
+  return ladeYamlDateien<Notfall>(client, ziel, NOTFALL_VERZEICHNIS);
 }
 
 /** Alle noch aktiven (nicht nachdokumentierten) Notfaelle eines Pull Requests. */
 export async function ladeOffeneNotfaelle(client: DateiablageClient, ziel: NotfallZiel, pullNummer: number): Promise<Notfall[]> {
-  let eintraege: VerzeichnisEintrag[];
-  try {
-    const { data } = await client.rest.repos.getContent({ owner: ziel.owner, repo: ziel.repo, path: "attesta/notfaelle", ref: ziel.branch });
-    if (!Array.isArray(data)) return [];
-    eintraege = data as VerzeichnisEintrag[];
-  } catch {
-    return [];
-  }
-
-  const notfaelle: Notfall[] = [];
-  for (const eintrag of eintraege) {
-    if (eintrag.type !== "file" || !eintrag.name.startsWith(`pr-${pullNummer}-`)) continue;
-    const { data } = await client.rest.repos.getContent({ owner: ziel.owner, repo: ziel.repo, path: eintrag.path, ref: ziel.branch });
-    const inhalt = data as { content?: string };
-    if (!inhalt.content) continue;
-    const geparst = load(Buffer.from(inhalt.content, "base64").toString("utf-8"));
-    if (geparst && typeof geparst === "object") notfaelle.push(geparst as Notfall);
-  }
-  return notfaelle.filter((notfall) => istAktiv(notfall, new Date()));
+  const alle = await ladeAlleNotfaelle(client, ziel);
+  return alle.filter((notfall) => notfall.pull_request === pullNummer && istAktiv(notfall, new Date()));
 }
