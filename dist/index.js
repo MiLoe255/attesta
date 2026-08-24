@@ -26951,9 +26951,10 @@ var require_regelsatz = __commonJS({
     exports2.ladeKsMatrix = ladeKsMatrix;
     exports2.ladeTraceDepth = ladeTraceDepth;
     exports2.ladePhasen = ladePhasen;
-    exports2.ladeRollen = ladeRollen;
-    exports2.ladeUnschaerfe = ladeUnschaerfe;
+    exports2.ladeRollen = ladeRollen2;
+    exports2.ladeUnschaerfe = ladeUnschaerfe2;
     exports2.ladeUrsachen = ladeUrsachen;
+    exports2.ladeTechnologien = ladeTechnologien2;
     var node_fs_1 = require("node:fs");
     var node_path_1 = require("node:path");
     var js_yaml_1 = require_js_yaml();
@@ -27055,7 +27056,7 @@ var require_regelsatz = __commonJS({
       };
     }
     var KENNUNG_MUSTER = /^[a-z][a-z0-9_]*$/;
-    function ladeRollen() {
+    function ladeRollen2() {
       const daten = ladeYaml("rollen.yaml");
       const rollen = (0, fehler_1.pruefePflichtfeld)(daten.rollen, "rollen.yaml", "rollen");
       if (!Array.isArray(rollen) || rollen.length < 8) {
@@ -27078,7 +27079,7 @@ var require_regelsatz = __commonJS({
         rollen
       };
     }
-    function ladeUnschaerfe() {
+    function ladeUnschaerfe2() {
       const daten = ladeYaml("unschaerfe.yaml");
       const woerter = (0, fehler_1.pruefePflichtfeld)(daten.woerter, "unschaerfe.yaml", "woerter");
       if (!Array.isArray(woerter) || woerter.length === 0) {
@@ -27117,6 +27118,18 @@ var require_regelsatz = __commonJS({
         version: (0, fehler_1.pruefePflichtfeld)(daten.version, "ursachen.yaml", "version"),
         quelle: (0, fehler_1.pruefePflichtfeld)(daten.quelle, "ursachen.yaml", "quelle"),
         werte
+      };
+    }
+    function ladeTechnologien2() {
+      const daten = ladeYaml("technologien.yaml");
+      const woerter = (0, fehler_1.pruefePflichtfeld)(daten.woerter, "technologien.yaml", "woerter");
+      if (!Array.isArray(woerter) || woerter.length === 0) {
+        throw new fehler_1.RegelsatzFehler("technologien.yaml", "woerter", "muss mindestens ein Wort enthalten");
+      }
+      return {
+        version: (0, fehler_1.pruefePflichtfeld)(daten.version, "technologien.yaml", "version"),
+        quelle: (0, fehler_1.pruefePflichtfeld)(daten.quelle, "technologien.yaml", "quelle"),
+        woerter
       };
     }
   }
@@ -30913,6 +30926,95 @@ function vergleicheProfilVerzeichnis(profilVerzeichnis, lockPfad, basis) {
   });
 }
 
+// src/gemeinsam/guete.ts
+var MODALVERBEN = ["muss", "soll", "kann"];
+function normativerSatz(text) {
+  const zeilen = text.split("\n").filter((zeile) => zeile.trim().startsWith(">"));
+  return zeilen.length > 0 ? zeilen.join(" ") : text;
+}
+function pruefeModalverb(text) {
+  const satz = normativerSatz(text);
+  const treffer = MODALVERBEN.filter((wort) => new RegExp(`\\b${wort}\\b`, "i").test(satz));
+  const anzahl = treffer.reduce((summe, wort) => summe + (satz.match(new RegExp(`\\b${wort}\\b`, "gi")) ?? []).length, 0);
+  if (anzahl === 0) {
+    return { pruefung: "Modalverb", zustand: "verletzt", details: "kein Modalverb (muss, soll, kann) gefunden" };
+  }
+  if (anzahl > 1) {
+    return { pruefung: "Modalverb", zustand: "verletzt", details: `${anzahl} Modalverben gefunden, genau eines erwartet` };
+  }
+  return { pruefung: "Modalverb", zustand: "erfuellt" };
+}
+function pruefeAkteur(text, rollen) {
+  const gefunden = rollen.find((rolle) => new RegExp(`\\b${rolle}\\b`, "i").test(text));
+  if (!gefunden) {
+    return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml gefunden" };
+  }
+  return { pruefung: "benannter Akteur", zustand: "erfuellt", details: gefunden };
+}
+var ZAHL_MIT_EINHEIT = /\d+([.,]\d+)?\s*(ms|s|sekunden?|minuten?|stunden?|tage?|wochen?|prozent|%|euro|€|mb|gb|kb|kilometer|km)\b/i;
+var VERGLEICHSOPERATOR = /(mindestens|h(ö|oe)chstens|maximal|minimal|genau|weniger als|mehr als|unter|über|ueber)\b|[<>]=?|(?<![a-zA-Z])=(?![a-zA-Z])/i;
+function pruefeMessbarkeit(text) {
+  if (ZAHL_MIT_EINHEIT.test(text) || VERGLEICHSOPERATOR.test(text)) {
+    return { pruefung: "messbares Abnahmekriterium", zustand: "erfuellt" };
+  }
+  return { pruefung: "messbares Abnahmekriterium", zustand: "verletzt", details: "keine Zahl mit Einheit und kein Vergleichsoperator gefunden" };
+}
+function findeWortstamm(text, wort) {
+  return new RegExp(`\\b${wort.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\w*`, "i").test(text);
+}
+function pruefeUnschaerfe(text, unschaerfe) {
+  const verstoss = unschaerfe.find((w) => w.stufe === "verstoss" && findeWortstamm(text, w.wort));
+  if (verstoss) {
+    return { pruefung: "kein Unschaerfewort", zustand: "verletzt", details: `Wort: ${verstoss.wort}` };
+  }
+  const warnung = unschaerfe.find((w) => w.stufe === "warnung" && findeWortstamm(text, w.wort));
+  if (warnung) {
+    return { pruefung: "kein Unschaerfewort", zustand: "warnung", details: `Wort: ${warnung.wort}` };
+  }
+  return { pruefung: "kein Unschaerfewort", zustand: "erfuellt" };
+}
+function pruefeTechnologie(text, technologien) {
+  const gefunden = technologien.find((wort) => findeWortstamm(text, wort));
+  if (gefunden) {
+    return { pruefung: "keine Technologievorgabe", zustand: "warnung", details: `Begriff: ${gefunden}` };
+  }
+  return { pruefung: "keine Technologievorgabe", zustand: "erfuellt" };
+}
+function pruefePflichtfelder(text) {
+  const hatK = /\bK[123]\b/.test(text);
+  const hatS = /\bS[1-4]\b/.test(text);
+  if (hatK && hatS) {
+    return { pruefung: "Pflichtfelder gefuellt", zustand: "erfuellt" };
+  }
+  const fehlend = [!hatK && "Kritikalitaet (K1 bis K3)", !hatS && "Delegationsstufe (S1 bis S4)"].filter(Boolean).join(", ");
+  return { pruefung: "Pflichtfelder gefuellt", zustand: "verletzt", details: `fehlt: ${fehlend}` };
+}
+var RANG = { erfuellt: 0, warnung: 1, verletzt: 2 };
+function pruefeAnforderung(text, regelsatz) {
+  const pruefungen = [
+    pruefeModalverb(text),
+    pruefeAkteur(text, regelsatz.rollen),
+    pruefeMessbarkeit(text),
+    pruefeUnschaerfe(text, regelsatz.unschaerfe),
+    pruefeTechnologie(text, regelsatz.technologien),
+    pruefePflichtfelder(text)
+  ];
+  const gesamt = pruefungen.reduce((schlechtester, p) => RANG[p.zustand] > RANG[schlechtester] ? p.zustand : schlechtester, "erfuellt");
+  return { gesamt, pruefungen };
+}
+function pruefeAnforderungMitRegelsatz(text) {
+  const rollen = (0, import_attesta_core.ladeRollen)().rollen.map((r) => r.anzeigename);
+  const unschaerfe = (0, import_attesta_core.ladeUnschaerfe)().woerter;
+  const technologien = (0, import_attesta_core.ladeTechnologien)().woerter;
+  return pruefeAnforderung(text, { rollen, unschaerfe, technologien });
+}
+
+// src/gemeinsam/meldung.ts
+function formatiereBefund(felder) {
+  const basis = `Verstoss gegen \`${felder.regelsatzdatei}\`, ${felder.regel}`;
+  return felder.fundort ? `${basis} (${felder.fundort})` : basis;
+}
+
 // src/action/index.ts
 var ZEITGRENZE_MS = 6e4;
 var ATTESTA_YML = "attesta.yml";
@@ -31014,6 +31116,25 @@ async function behandleKommentarEreignis(octokit, owner, repo) {
     }
   }
 }
+async function behandleIssueEreignis(octokit, owner, repo) {
+  const issue = import_github2.context.payload.issue;
+  if (!issue?.body) {
+    core2.info("Issue ohne Text, nichts zu pruefen");
+    return;
+  }
+  const ergebnis = pruefeAnforderungMitRegelsatz(issue.body);
+  const zeilen = ["## Attesta Zyklus: Anforderungsguete", ""];
+  const befunde = ergebnis.pruefungen.filter((p) => p.zustand !== "erfuellt");
+  if (befunde.length === 0) {
+    zeilen.push("Sechs Pruefungen ohne Befund.");
+  } else {
+    for (const befund of befunde) {
+      const regel = befund.details ? `${befund.pruefung}: ${befund.details}` : befund.pruefung;
+      zeilen.push(`- ${formatiereBefund({ regelsatzdatei: `Issue #${issue.number}`, regel })}`);
+    }
+  }
+  await mitWiederholungBeiRatenbegrenzung(() => schreibeFestenKommentar(octokit, { owner, repo, pullNummer: issue.number }, zeilen.join("\n")));
+}
 async function behandleMonatsbericht(octokit, owner, repo) {
   const berichtClient = octokit;
   const { data: repoDaten } = await octokit.rest.repos.get({ owner, repo });
@@ -31053,6 +31174,10 @@ async function fuehreAus() {
   }
   if (import_github2.context.eventName === "issue_comment") {
     await behandleKommentarEreignis(octokit, owner, repo);
+    return;
+  }
+  if (import_github2.context.eventName === "issues") {
+    await behandleIssueEreignis(octokit, owner, repo);
     return;
   }
   if (import_github2.context.eventName === "schedule" || import_github2.context.eventName === "workflow_dispatch") {

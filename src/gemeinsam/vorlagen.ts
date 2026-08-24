@@ -11,6 +11,8 @@ name: Attesta Zyklus
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  issues:
+    types: [opened, edited]
   issue_comment:
     types: [created, edited]
   workflow_dispatch: {}

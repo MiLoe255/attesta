@@ -2,18 +2,22 @@
  * Einstiegspunkt der Action. Arbeitspaket 7 (REQ-16 bis REQ-19),
  * Arbeitspaket 8 (REQ-20, REQ-21), Arbeitspaket 9 (REQ-22, REQ-23),
  * Arbeitspaket 11 (REQ-27, REQ-30, REQ-31), Arbeitspaket 13 (REQ-34,
- * REQ-35) und Arbeitspaket 14 (REQ-36 bis REQ-38). Vier Rechte, ein Ziel
- * fuer jeden Netzaufruf (api.github.com, siehe github.ts), ein fester
- * Kommentar, ein Check-Run, Notfallpfad und Beobachtungsmodus als
- * Ueberschreibung des Check-Run-Zustands, Ursachencode als Datei,
- * Lizenzhinweis, Monatsbericht als Pull Request.
+ * REQ-35), Arbeitspaket 14 (REQ-36 bis REQ-38) und Arbeitspaket 10
+ * (REQ-24, REQ-25). Vier Rechte, ein Ziel fuer jeden Netzaufruf
+ * (api.github.com, siehe github.ts), ein fester Kommentar, ein
+ * Check-Run, Notfallpfad und Beobachtungsmodus als Ueberschreibung des
+ * Check-Run-Zustands, Ursachencode als Datei, Lizenzhinweis,
+ * Monatsbericht als Pull Request, Anforderungsguete auf Issue-Texten.
  *
- * Die eigentliche Regelpruefung (REQ-24 bis REQ-26) ist hier bewusst
- * nicht enthalten, der Zustand des Check-Runs bleibt bis dahin ein
- * Platzhalter. Der Ursachenvorschlag aus Indizien (REQ-30) hat keine
- * Indizien-Engine, weil D3-16 dafuer historische Daten aus rund fuenfzig
- * Gate-Laeufen verlangt, die es noch nicht gibt: vorschlag bleibt bis
- * dahin immer leer, uebernommen entsprechend immer falsch.
+ * Der Zustand des Grundlauf-Check-Runs bleibt weiterhin ein Platzhalter:
+ * REQ-26 (Nachweisgrad) ist als reine Funktion gebaut und getestet
+ * (gemeinsam/nachweisgrad.ts), aber nicht in den PR-Grundlauf verdrahtet,
+ * weil keine Anforderung im 47er-Bestand festlegt, welche Dateien eines
+ * Pull Requests als "Anforderungen" zu pruefen sind. Der Ursachenvorschlag
+ * aus Indizien (REQ-30) hat keine Indizien-Engine, weil D3-16 dafuer
+ * historische Daten aus rund fuenfzig Gate-Laeufen verlangt, die es noch
+ * nicht gibt: vorschlag bleibt bis dahin immer leer, uebernommen
+ * entsprechend immer falsch.
  */
 import * as core from "@actions/core";
 import { context } from "@actions/github";
@@ -35,6 +39,8 @@ import { erzeugeBerichtsinhalt } from "./bericht";
 import { stelleBerichtBereit, type BerichtPrClient } from "./berichtpr";
 import { ladeProfilBasis } from "../gemeinsam/regelsatz";
 import { vergleicheProfilVerzeichnis, type ProfilBefund } from "../gemeinsam/profilvergleich";
+import { pruefeAnforderungMitRegelsatz } from "../gemeinsam/guete";
+import { formatiereBefund } from "../gemeinsam/meldung";
 
 const ZEITGRENZE_MS = 60_000;
 const ATTESTA_YML = "attesta.yml";
@@ -161,6 +167,33 @@ async function behandleKommentarEreignis(octokit: Octokit, owner: string, repo: 
 }
 
 /**
+ * Anforderungsguete auf Issue-Texten, REQ-25, zweiter Fundort neben der
+ * Konsole (die Dateien lokal ohne Netz prueft). Ruft denselben
+ * Programmteil auf wie `attesta guete <Pfad>`, siehe gemeinsam/guete.ts.
+ */
+async function behandleIssueEreignis(octokit: Octokit, owner: string, repo: string): Promise<void> {
+  const issue = context.payload.issue as { number: number; body?: string | null } | undefined;
+  if (!issue?.body) {
+    core.info("Issue ohne Text, nichts zu pruefen");
+    return;
+  }
+
+  const ergebnis = pruefeAnforderungMitRegelsatz(issue.body);
+  const zeilen = ["## Attesta Zyklus: Anforderungsguete", ""];
+  const befunde = ergebnis.pruefungen.filter((p) => p.zustand !== "erfuellt");
+  if (befunde.length === 0) {
+    zeilen.push("Sechs Pruefungen ohne Befund.");
+  } else {
+    for (const befund of befunde) {
+      const regel = befund.details ? `${befund.pruefung}: ${befund.details}` : befund.pruefung;
+      zeilen.push(`- ${formatiereBefund({ regelsatzdatei: `Issue #${issue.number}`, regel })}`);
+    }
+  }
+
+  await mitWiederholungBeiRatenbegrenzung(() => schreibeFestenKommentar(octokit, { owner, repo, pullNummer: issue.number }, zeilen.join("\n")));
+}
+
+/**
  * Monatsbericht, Arbeitspaket 14 (REQ-36 bis REQ-38). Wird von einem
  * planbaren Ereignis ausgeloest (schedule oder workflow_dispatch); der
  * eigentliche Zeitplan (Tag im Monat, SPEC-12 nicht spezifiziert, erster
@@ -212,6 +245,11 @@ async function fuehreAus(): Promise<void> {
 
   if (context.eventName === "issue_comment") {
     await behandleKommentarEreignis(octokit, owner, repo);
+    return;
+  }
+
+  if (context.eventName === "issues") {
+    await behandleIssueEreignis(octokit, owner, repo);
     return;
   }
 
