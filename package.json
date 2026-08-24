@@ -8,7 +8,7 @@
     "attesta": "dist/konsole.js"
   },
   "scripts": {
-    "generate": "tsx scripts/generate-ursachen.ts",
+    "generate": "tsx scripts/generate-ursachen.ts && tsx scripts/generate-konfigurator.ts",
     "build": "npm run generate && tsc -p . && node scripts/bundle.mjs",
     "test": "tsx --test test/*.test.ts",
     "release": "node scripts/release.mjs"
