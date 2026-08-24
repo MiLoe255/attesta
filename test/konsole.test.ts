@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import net from "node:net";
@@ -44,9 +44,10 @@ test("REQ-12: init, pruefen und guete oeffnen keine Netzverbindung", async (t) =
     const cwd = process.cwd();
     process.chdir(ziel);
     try {
+      writeFileSync("anforderung.md", "> Der Reviewer muss binnen 60 Sekunden pruefen. K2, S2.\n", "utf-8");
       assert.doesNotThrow(() => initBefehl.fuehreAus([]));
       assert.doesNotThrow(() => pruefenBefehl.fuehreAus(["."]));
-      assert.doesNotThrow(() => gueteBefehl.fuehreAus(["."]));
+      assert.doesNotThrow(() => gueteBefehl.fuehreAus(["anforderung.md"]));
     } finally {
       process.chdir(cwd);
     }

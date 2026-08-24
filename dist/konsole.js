@@ -3154,16 +3154,126 @@ var pruefenBefehl = {
 };
 
 // src/konsole/guete.ts
+var import_node_fs2 = require("node:fs");
+
+// src/gemeinsam/guete.ts
+var MODALVERBEN = ["muss", "soll", "kann"];
+function normativerSatz(text) {
+  const zeilen = text.split("\n").filter((zeile) => zeile.trim().startsWith(">"));
+  return zeilen.length > 0 ? zeilen.join(" ") : text;
+}
+function pruefeModalverb(text) {
+  const satz = normativerSatz(text);
+  const treffer = MODALVERBEN.filter((wort) => new RegExp(`\\b${wort}\\b`, "i").test(satz));
+  const anzahl = treffer.reduce((summe, wort) => summe + (satz.match(new RegExp(`\\b${wort}\\b`, "gi")) ?? []).length, 0);
+  if (anzahl === 0) {
+    return { pruefung: "Modalverb", zustand: "verletzt", details: "kein Modalverb (muss, soll, kann) gefunden" };
+  }
+  if (anzahl > 1) {
+    return { pruefung: "Modalverb", zustand: "verletzt", details: `${anzahl} Modalverben gefunden, genau eines erwartet` };
+  }
+  return { pruefung: "Modalverb", zustand: "erfuellt" };
+}
+function pruefeAkteur(text, rollen) {
+  const gefunden = rollen.find((rolle) => new RegExp(`\\b${rolle}\\b`, "i").test(text));
+  if (!gefunden) {
+    return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml gefunden" };
+  }
+  return { pruefung: "benannter Akteur", zustand: "erfuellt", details: gefunden };
+}
+var ZAHL_MIT_EINHEIT = /\d+([.,]\d+)?\s*(ms|s|sekunden?|minuten?|stunden?|tage?|wochen?|prozent|%|euro|€|mb|gb|kb|kilometer|km)\b/i;
+var VERGLEICHSOPERATOR = /(mindestens|h(ö|oe)chstens|maximal|minimal|genau|weniger als|mehr als|unter|über|ueber)\b|[<>]=?|(?<![a-zA-Z])=(?![a-zA-Z])/i;
+function pruefeMessbarkeit(text) {
+  if (ZAHL_MIT_EINHEIT.test(text) || VERGLEICHSOPERATOR.test(text)) {
+    return { pruefung: "messbares Abnahmekriterium", zustand: "erfuellt" };
+  }
+  return { pruefung: "messbares Abnahmekriterium", zustand: "verletzt", details: "keine Zahl mit Einheit und kein Vergleichsoperator gefunden" };
+}
+function findeWortstamm(text, wort) {
+  return new RegExp(`\\b${wort.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\w*`, "i").test(text);
+}
+function pruefeUnschaerfe(text, unschaerfe) {
+  const verstoss = unschaerfe.find((w) => w.stufe === "verstoss" && findeWortstamm(text, w.wort));
+  if (verstoss) {
+    return { pruefung: "kein Unschaerfewort", zustand: "verletzt", details: `Wort: ${verstoss.wort}` };
+  }
+  const warnung = unschaerfe.find((w) => w.stufe === "warnung" && findeWortstamm(text, w.wort));
+  if (warnung) {
+    return { pruefung: "kein Unschaerfewort", zustand: "warnung", details: `Wort: ${warnung.wort}` };
+  }
+  return { pruefung: "kein Unschaerfewort", zustand: "erfuellt" };
+}
+function pruefeTechnologie(text, technologien) {
+  const gefunden = technologien.find((wort) => findeWortstamm(text, wort));
+  if (gefunden) {
+    return { pruefung: "keine Technologievorgabe", zustand: "warnung", details: `Begriff: ${gefunden}` };
+  }
+  return { pruefung: "keine Technologievorgabe", zustand: "erfuellt" };
+}
+function pruefePflichtfelder(text) {
+  const hatK = /\bK[123]\b/.test(text);
+  const hatS = /\bS[1-4]\b/.test(text);
+  if (hatK && hatS) {
+    return { pruefung: "Pflichtfelder gefuellt", zustand: "erfuellt" };
+  }
+  const fehlend = [!hatK && "Kritikalitaet (K1 bis K3)", !hatS && "Delegationsstufe (S1 bis S4)"].filter(Boolean).join(", ");
+  return { pruefung: "Pflichtfelder gefuellt", zustand: "verletzt", details: `fehlt: ${fehlend}` };
+}
+var RANG = { erfuellt: 0, warnung: 1, verletzt: 2 };
+function pruefeAnforderung(text, regelsatz) {
+  const pruefungen = [
+    pruefeModalverb(text),
+    pruefeAkteur(text, regelsatz.rollen),
+    pruefeMessbarkeit(text),
+    pruefeUnschaerfe(text, regelsatz.unschaerfe),
+    pruefeTechnologie(text, regelsatz.technologien),
+    pruefePflichtfelder(text)
+  ];
+  const gesamt = pruefungen.reduce((schlechtester, p) => RANG[p.zustand] > RANG[schlechtester] ? p.zustand : schlechtester, "erfuellt");
+  return { gesamt, pruefungen };
+}
+function pruefeAnforderungMitRegelsatz(text) {
+  const rollen = (0, import_attesta_core.ladeRollen)().rollen.map((r) => r.anzeigename);
+  const unschaerfe = (0, import_attesta_core.ladeUnschaerfe)().woerter;
+  const technologien = (0, import_attesta_core.ladeTechnologien)().woerter;
+  return pruefeAnforderung(text, { rollen, unschaerfe, technologien });
+}
+
+// src/gemeinsam/meldung.ts
+function formatiereBefund(felder) {
+  const basis = `Verstoss gegen \`${felder.regelsatzdatei}\`, ${felder.regel}`;
+  return felder.fundort ? `${basis} (${felder.fundort})` : basis;
+}
+
+// src/konsole/guete.ts
 var gueteBefehl = {
   name: "guete",
   hilfe() {
-    console.log("attesta guete <Pfad|Issue-Nummer>");
-    console.log("  Eingabe:  Pfad im Repository oder Issue-Nummer");
-    console.log("  Ausgabe:  Gueteliste je Anforderung, Rueckgabewert 0 ohne Befund, 1 bei Befund");
+    console.log("attesta guete <Pfad>");
+    console.log("  Eingabe:  Pfad zu einer Datei im Repository");
+    console.log("  Ausgabe:  Gueteliste je Pruefung, Rueckgabewert 0 ohne Befund, 1 bei Befund");
   },
-  fuehreAus() {
-    console.log("attesta guete: sechs Pruefungen noch nicht implementiert, siehe REQ-24 bis REQ-26");
-    return 0;
+  fuehreAus(argv) {
+    const pfad = argv[0];
+    if (!pfad) {
+      throw new KonsoleFehler("Aufruf: attesta guete <Pfad>", 2);
+    }
+    if (!(0, import_node_fs2.existsSync)(pfad)) {
+      throw new KonsoleFehler(`Pfad nicht gefunden: ${pfad}`, 2);
+    }
+    const text = (0, import_node_fs2.readFileSync)(pfad, "utf-8");
+    const ergebnis = pruefeAnforderungMitRegelsatz(text);
+    let befundGefunden = false;
+    for (const pruefung of ergebnis.pruefungen) {
+      if (pruefung.zustand === "erfuellt") continue;
+      befundGefunden = true;
+      const regel = pruefung.details ? `${pruefung.pruefung}: ${pruefung.details}` : pruefung.pruefung;
+      console.log(formatiereBefund({ regelsatzdatei: pfad, regel }));
+    }
+    if (!befundGefunden) {
+      console.log(`${pfad}: sechs Pruefungen ohne Befund`);
+    }
+    return befundGefunden ? 1 : 0;
   }
 };
 
