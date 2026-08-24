@@ -5,6 +5,7 @@
  * existiert, ohne ausdrueckliche Bestaetigung (GR-4.4).
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { dump } from "js-yaml";
 import { ladeProfilBasis } from "../gemeinsam/regelsatz";
@@ -63,6 +64,13 @@ export function fuehreInitAus(zielVerzeichnis: string, optionen: InitOptionen = 
 
   writeFileSync(lockPfad, dump(lock, { lineWidth: -1, noRefs: true }), "utf-8");
 
+  // SPEC-13 Datenmodell: "zufaellig erzeugt bei init, ohne Bezug zum Namen". Nur einmal
+  // erzeugt, bleibt auch bei --ueberschreiben des Profils unveraendert stehen.
+  const betriebskennungPfad = join(zielVerzeichnis, "attesta", "betriebskennung");
+  if (!existsSync(betriebskennungPfad)) {
+    writeFileSync(betriebskennungPfad, randomUUID(), "utf-8");
+  }
+
   return { profilVerzeichnis, lockPfad, geschriebeneDateien };
 }
 
@@ -71,7 +79,7 @@ export const initBefehl: Befehl = {
   hilfe(): void {
     console.log("attesta init [--ueberschreiben]");
     console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
-    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock");
+    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock, attesta/betriebskennung");
   },
   fuehreAus(argv: string[]): number {
     const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben: argv.includes("--ueberschreiben") });

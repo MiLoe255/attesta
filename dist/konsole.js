@@ -3,6 +3,7 @@
 
 // src/konsole/init.ts
 var import_node_fs = require("node:fs");
+var import_node_crypto = require("node:crypto");
 var import_node_path = require("node:path");
 
 // node_modules/js-yaml/dist/js-yaml.mjs
@@ -3122,6 +3123,10 @@ function fuehreInitAus(zielVerzeichnis, optionen = {}) {
     };
   }
   (0, import_node_fs.writeFileSync)(lockPfad, dump(lock, { lineWidth: -1, noRefs: true }), "utf-8");
+  const betriebskennungPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "betriebskennung");
+  if (!(0, import_node_fs.existsSync)(betriebskennungPfad)) {
+    (0, import_node_fs.writeFileSync)(betriebskennungPfad, (0, import_node_crypto.randomUUID)(), "utf-8");
+  }
   return { profilVerzeichnis, lockPfad, geschriebeneDateien };
 }
 var initBefehl = {
@@ -3129,7 +3134,7 @@ var initBefehl = {
   hilfe() {
     console.log("attesta init [--ueberschreiben]");
     console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
-    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock");
+    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock, attesta/betriebskennung");
   },
   fuehreAus(argv) {
     const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben: argv.includes("--ueberschreiben") });
@@ -3277,6 +3282,121 @@ var gueteBefehl = {
   }
 };
 
+// src/gemeinsam/ursachen.generated.ts
+var URSACHEN = [
+  {
+    "kennung": "klarheit",
+    "label": "Klarheit",
+    "beschreibung": "Das Abnahmekriterium war nie messbar formuliert"
+  },
+  {
+    "kennung": "komplexitaet",
+    "label": "Komplexitaet",
+    "beschreibung": "Umfang oder Werkzeug haben die Aufgabe unterschaetzt"
+  },
+  {
+    "kennung": "koennen",
+    "label": "Koennen",
+    "beschreibung": "Fachwissen oder eine Vorlage fehlten"
+  },
+  {
+    "kennung": "kontrolle",
+    "label": "Kontrolle",
+    "beschreibung": "Niemand hat frueh genug geprueft, bis das Gate lief"
+  },
+  {
+    "kennung": "konsequenz",
+    "label": "Konsequenz",
+    "beschreibung": "Der Verstoss blieb wiederholt folgenlos, die Regel wurde nicht durchgesetzt"
+  },
+  {
+    "kennung": "wollen",
+    "label": "Wollen",
+    "beschreibung": "Der Mensch wusste es und hat es unterlassen",
+    "nur_reviewer": true
+  },
+  {
+    "kennung": "werkzeugfehler",
+    "label": "Werkzeugfehler",
+    "beschreibung": "Das Gate wurde zu Unrecht rot, kein tatsaechlicher Verstoss"
+  }
+];
+
+// src/gemeinsam/delegationsreife.ts
+function bestimmeDelegationsreife(b) {
+  const fehlend = [];
+  if (!b.stufe1.profilVorhanden) fehlend.push("Profil (attesta/profil/)");
+  if (!b.stufe1.issueFormularVorhanden) fehlend.push("Issue-Formular (.github/ISSUE_TEMPLATE/arbeitspaket.yml)");
+  const stufe1 = b.stufe1.profilVorhanden && b.stufe1.issueFormularVorhanden;
+  if (!b.stufe2.pruefungenVerbindlich) fehlend.push("verbindliche Pruefungen (Indiz aus PR-Historie)");
+  if (!b.stufe2.vierAugenBelegt) fehlend.push("belegte Vier-Augen-Freigabe");
+  if (!b.stufe2.keinSelbstMerge) fehlend.push("kein Selbst-Merge");
+  const stufe2 = stufe1 && b.stufe2.pruefungenVerbindlich && b.stufe2.vierAugenBelegt && b.stufe2.keinSelbstMerge;
+  if (!b.stufe3.leitplankenMaschinenlesbar) fehlend.push("maschinenlesbare Leitplanken");
+  if (!b.stufe3.gate3Durchlaufen) fehlend.push("durchlaufenes Gate 3 (Selbstauskunft ueber /attesta gate3 bestanden <Begruendung>)");
+  const stufe3 = stufe2 && b.stufe3.leitplankenMaschinenlesbar && b.stufe3.gate3Durchlaufen;
+  const stufe = stufe3 ? 3 : stufe2 ? 2 : 1;
+  return { stufe, fehlend };
+}
+
+// src/gemeinsam/kennzahlen.ts
+var KENNZAHLEN_FORMELVERSION = "1.0.0";
+function erzeugeKennzahlenDatensatz(params) {
+  const ursachenverteilung = {};
+  for (const ursache of URSACHEN) {
+    ursachenverteilung[ursache.kennung] = params.ursachen.filter((eintrag) => eintrag.wert === ursache.kennung).length;
+  }
+  const { stufe } = bestimmeDelegationsreife(params.stufenBedingungen);
+  return {
+    betriebskennung: params.betriebskennung,
+    formelversion: KENNZAHLEN_FORMELVERSION,
+    arbeitspakete: params.ursachen.length,
+    erstdurchlauf_je_stufe: { S1: 0, S2: 0, S3: 0, S4: 0 },
+    ursachenverteilung,
+    nachweisgrad: 0,
+    delegationsreife: stufe,
+    notfaelle: params.notfaelle.length
+  };
+}
+
+// src/konsole/kennzahlen-lokal.ts
+var import_node_fs3 = require("node:fs");
+var import_node_path2 = require("node:path");
+function leseYamlVerzeichnis(pfad) {
+  if (!(0, import_node_fs3.existsSync)(pfad)) return [];
+  const ergebnisse = [];
+  for (const datei of (0, import_node_fs3.readdirSync)(pfad)) {
+    if (!datei.endsWith(".yaml") && !datei.endsWith(".yml")) continue;
+    const geparst = load((0, import_node_fs3.readFileSync)((0, import_node_path2.join)(pfad, datei), "utf-8"));
+    if (geparst && typeof geparst === "object") ergebnisse.push(geparst);
+  }
+  return ergebnisse;
+}
+function liesUrsachenLokal(wurzel) {
+  return leseYamlVerzeichnis((0, import_node_path2.join)(wurzel, "attesta", "ursachen"));
+}
+function liesNotfaelleLokal(wurzel) {
+  return leseYamlVerzeichnis((0, import_node_path2.join)(wurzel, "attesta", "notfaelle"));
+}
+function liesBetriebskennung(wurzel) {
+  const pfad = (0, import_node_path2.join)(wurzel, "attesta", "betriebskennung");
+  return (0, import_node_fs3.existsSync)(pfad) ? (0, import_node_fs3.readFileSync)(pfad, "utf-8").trim() || void 0 : void 0;
+}
+function ermittleStufenBedingungenLokal(wurzel) {
+  const existiert = (relativerPfad) => (0, import_node_fs3.existsSync)((0, import_node_path2.join)(wurzel, relativerPfad));
+  return {
+    stufe1: {
+      profilVorhanden: existiert("attesta/profil.lock"),
+      issueFormularVorhanden: existiert(".github/ISSUE_TEMPLATE/arbeitspaket.yml")
+    },
+    stufe2: { pruefungenVerbindlich: false, vierAugenBelegt: false, keinSelbstMerge: false },
+    stufe3: {
+      leitplankenMaschinenlesbar: existiert(".github/workflows") && (existiert("CLAUDE.md") || existiert("AGENTS.md")),
+      gate3Durchlaufen: existiert("attesta/gates/p3-bestanden.yaml")
+    }
+  };
+}
+
 // src/konsole/kennzahlen.ts
 var kennzahlenBefehl = {
   name: "kennzahlen",
@@ -3287,10 +3407,22 @@ var kennzahlenBefehl = {
   },
   fuehreAus(argv) {
     if (!argv.includes("--probe")) {
-      console.log("attesta kennzahlen: nur --probe ist unterstuetzt, es wird nichts gesendet");
+      console.log("attesta kennzahlen: nur --probe ist unterstuetzt. Echter Versand (REQ-39 bis REQ-41) ist gesperrt, siehe D2-13.");
       return 0;
     }
-    console.log("attesta kennzahlen --probe: Datensatz noch nicht implementiert, gesperrt durch D2-13");
+    const wurzel = process.cwd();
+    const betriebskennung = liesBetriebskennung(wurzel);
+    if (!betriebskennung) {
+      throw new KonsoleFehler("Profil fehlt. Erst attesta init ausfuehren.", 2);
+    }
+    const datensatz = erzeugeKennzahlenDatensatz({
+      betriebskennung,
+      ursachen: liesUrsachenLokal(wurzel),
+      notfaelle: liesNotfaelleLokal(wurzel),
+      stufenBedingungen: ermittleStufenBedingungenLokal(wurzel)
+    });
+    console.log(dump(datensatz, { lineWidth: -1, noRefs: true }));
+    console.log("Nichts gesendet. Echter Versand ist gesperrt, siehe D2-13.");
     return 0;
   }
 };

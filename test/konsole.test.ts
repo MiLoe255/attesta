@@ -12,6 +12,7 @@ import { gueteBefehl } from "../src/konsole/guete";
 import { kennzahlenBefehl } from "../src/konsole/kennzahlen";
 import { fuehreAus } from "../src/konsole/index";
 import { formatiereBefund } from "../src/gemeinsam/meldung";
+import { KonsoleFehler } from "../src/gemeinsam/fehler";
 
 const BEFEHLE = [initBefehl, pruefenBefehl, gueteBefehl, kennzahlenBefehl];
 
@@ -74,4 +75,35 @@ test("REQ-11: --help auf einen bekannten Befehl liefert Rueckgabewert 0", (t) =>
   t.mock.method(console, "log", () => {});
   assert.equal(fuehreAus(["pruefen", "--help"]), 0);
   t.mock.restoreAll();
+});
+
+test("REQ-42 Fehlerfall: kennzahlen --probe ohne vorheriges init meldet fehlendes Profil", (t) => {
+  const ziel = mkdtempSync(join(tmpdir(), "attesta-kennzahlen-test-"));
+  const cwd = process.cwd();
+  process.chdir(ziel);
+  try {
+    assert.throws(() => kennzahlenBefehl.fuehreAus(["--probe"]), (e: unknown) => e instanceof KonsoleFehler && e.rueckgabewert === 2);
+  } finally {
+    process.chdir(cwd);
+    rmSync(ziel, { recursive: true, force: true });
+  }
+});
+
+test("REQ-42: kennzahlen --probe zeigt den Datensatz nach attesta init und sendet nichts", (t) => {
+  const ziel = mkdtempSync(join(tmpdir(), "attesta-kennzahlen-test-"));
+  const cwd = process.cwd();
+  process.chdir(ziel);
+  try {
+    initBefehl.fuehreAus([]);
+    const zeilen: string[] = [];
+    t.mock.method(console, "log", (zeile: string) => zeilen.push(zeile));
+    assert.equal(kennzahlenBefehl.fuehreAus(["--probe"]), 0);
+    const ausgabe = zeilen.join("\n");
+    assert.match(ausgabe, /betriebskennung:/);
+    assert.match(ausgabe, /Nichts gesendet/);
+  } finally {
+    t.mock.restoreAll();
+    process.chdir(cwd);
+    rmSync(ziel, { recursive: true, force: true });
+  }
 });
