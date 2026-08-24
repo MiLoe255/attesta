@@ -96,11 +96,22 @@ test("Stufe 2: ein einziger Selbst-Merge in der Stichprobe reicht, um die Beding
   assert.equal(b.stufe2.keinSelbstMerge, false);
 });
 
-test("Stufe 3: Leitplanken brauchen Workflows plus CLAUDE.md oder AGENTS.md, Gate 3 bleibt immer unerfuellt", async () => {
+test("Stufe 3: Leitplanken brauchen Workflows plus CLAUDE.md oder AGENTS.md", async () => {
   const client = erzeugeFakeClient({ dateien: [".github/workflows", "CLAUDE.md"] });
   const b = await ermittleStufenBedingungen(client, ZIEL);
   assert.equal(b.stufe3.leitplankenMaschinenlesbar, true);
+});
+
+test("Stufe 3: ohne Gate-3-Attest bleibt gate3Durchlaufen falsch", async () => {
+  const client = erzeugeFakeClient({ dateien: [".github/workflows", "CLAUDE.md"] });
+  const b = await ermittleStufenBedingungen(client, ZIEL);
   assert.equal(b.stufe3.gate3Durchlaufen, false);
+});
+
+test("Stufe 3: die Gate-3-Nachweis-Konvention, ein vorhandenes Attest zaehlt als durchlaufen", async () => {
+  const client = erzeugeFakeClient({ dateien: [".github/workflows", "CLAUDE.md", "attesta/gates/p3-bestanden.yaml"] });
+  const b = await ermittleStufenBedingungen(client, ZIEL);
+  assert.equal(b.stufe3.gate3Durchlaufen, true);
 });
 
 test("Stufe 3: ohne Workflow-Verzeichnis keine Leitplanken, auch mit CLAUDE.md", async () => {
