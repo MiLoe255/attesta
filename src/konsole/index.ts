@@ -1,53 +1,47 @@
-#!/usr/bin/env node
 /**
- * Einstiegspunkt der Konsole. `init` ist aus Arbeitspaket 4 (REQ-07, REQ-08)
- * vollstaendig. `pruefen`, `guete` und `kennzahlen` folgen in Arbeitspaket 5
- * (REQ-11 bis REQ-13) und sind hier bewusst nur Platzhalter, damit REQ-11
- * "vier Befehle" spaeter ohne Bruch in der Aufrufform ergaenzt wird.
+ * Befehls-Dispatch der Konsole, Arbeitspaket 5 (REQ-11 bis REQ-13).
+ * Vier Befehle, einheitlicher Rueckgabewert (GR-4.1): 0 ohne Befund,
+ * 1 Befund, 2 Abbruch durch Fehler. Reine Funktionen, kein Seiteneffekt
+ * beim Import, damit Tests sie ohne echten Prozessaufruf pruefen koennen.
+ * Der ausfuehrbare Einstiegspunkt ist cli.ts.
  */
-import { fuehreInitAus } from "./init";
+import { initBefehl } from "./init";
+import { pruefenBefehl } from "./pruefen";
+import { gueteBefehl } from "./guete";
+import { kennzahlenBefehl } from "./kennzahlen";
 import { KonsoleFehler } from "../gemeinsam/fehler";
+import type { Befehl } from "./befehl";
 
-function druckeHilfeInit(): void {
-  console.log("attesta init [--ueberschreiben]");
-  console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
-  console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock");
+const BEFEHLE: Befehl[] = [initBefehl, pruefenBefehl, gueteBefehl, kennzahlenBefehl];
+
+function findeBefehl(name: string | undefined): Befehl | undefined {
+  return BEFEHLE.find((b) => b.name === name);
 }
 
-function fuehreAus(argv: string[]): number {
-  const [befehl, ...rest] = argv;
+export function fuehreAus(argv: string[]): number {
+  const [name, ...rest] = argv;
+  const befehl = findeBefehl(name);
 
-  if (befehl === "init") {
-    if (rest.includes("--help")) {
-      druckeHilfeInit();
-      return 0;
-    }
-    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben: rest.includes("--ueberschreiben") });
-    for (const datei of ergebnis.geschriebeneDateien) console.log(`geschrieben: ${datei}`);
-    console.log(`geschrieben: ${ergebnis.lockPfad}`);
+  if (!befehl) {
+    console.error(`Unbekannter Befehl. Verfuegbar: ${BEFEHLE.map((b) => b.name).join(", ")}`);
+    return 2;
+  }
+  if (rest.includes("--help")) {
+    befehl.hilfe();
     return 0;
   }
-
-  if (befehl === "pruefen" || befehl === "guete" || befehl === "kennzahlen") {
-    console.log(`attesta ${befehl}: noch nicht implementiert, siehe Arbeitspaket 5 (REQ-11 bis REQ-13)`);
-    return 0;
-  }
-
-  console.error("Unbekannter Befehl. Verfuegbar: init, pruefen, guete, kennzahlen");
-  return 2;
+  return befehl.fuehreAus(rest);
 }
 
-function main(): void {
+/** Fuehrt einen Aufruf aus und uebersetzt einen KonsoleFehler in den Rueckgabewert. Fuer cli.ts. */
+export function fuehreAusMitFehlerbehandlung(argv: string[]): number {
   try {
-    process.exitCode = fuehreAus(process.argv.slice(2));
+    return fuehreAus(argv);
   } catch (e) {
     if (e instanceof KonsoleFehler) {
       console.error(`Befund: ${e.message}`);
-      process.exitCode = e.rueckgabewert;
-      return;
+      return e.rueckgabewert;
     }
     throw e;
   }
 }
-
-main();
