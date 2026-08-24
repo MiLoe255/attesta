@@ -28,6 +28,7 @@ import { wendeUeberschreibungenAn } from "./zustandsueberschreibung";
 import { ermittleFreigaberecht } from "./freigabe";
 import { erzeugeUrsachendatei, type UrsachenKennung } from "./ursachendatei";
 import { schreibeUrsache } from "./ursachenspeicher";
+import { formatiereLizenzhinweis, istHinweisDringend, pruefeLizenz } from "../gemeinsam/lizenz";
 
 const ZEITGRENZE_MS = 60_000;
 const ATTESTA_YML = "attesta.yml";
@@ -37,7 +38,18 @@ function arbeitsverzeichnis(): string {
 }
 
 async function behandleGrundlauf(octokit: Octokit, owner: string, repo: string, prNummer: number, branch: string, sha: string): Promise<void> {
-  const body = ["## Attesta Zyklus", "", "Anforderungspruefung noch nicht implementiert, siehe REQ-24 bis REQ-26.", "", "Ursachencode, ein Klick setzt genau ein Feld:", "", formatiereAnkreuzfelder()].join("\n");
+  const teile = ["## Attesta Zyklus", "", "Anforderungspruefung noch nicht implementiert, siehe REQ-24 bis REQ-26.", "", "Ursachencode, ein Klick setzt genau ein Feld:", "", formatiereAnkreuzfelder()];
+
+  // REQ-35: eine abgelaufene, ungueltige oder fehlende Lizenz haelt den Lauf nicht an (GR-11.4),
+  // nur ein Hinweis, der nach dreissig Tagen an den Kopf des Kommentars wandert (GR-11.5).
+  const lizenzErgebnis = pruefeLizenz(core.getInput("lizenzschluessel") || undefined);
+  const lizenzHinweis = formatiereLizenzhinweis(lizenzErgebnis);
+  if (lizenzHinweis && istHinweisDringend(lizenzErgebnis)) {
+    teile.unshift(`**${lizenzHinweis}**`, "");
+  } else if (lizenzHinweis) {
+    teile.push("", `_${lizenzHinweis}_`);
+  }
+  const body = teile.join("\n");
 
   try {
     await mitWiederholungBeiRatenbegrenzung(() => schreibeFestenKommentar(octokit, { owner, repo, pullNummer: prNummer }, body));

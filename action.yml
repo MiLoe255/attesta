@@ -1,11 +1,16 @@
 # Kopfzeile: PROSTRUCTIVE® Consulting & Management, FSL-1.1-Apache-2.0, Herkunft attesta 0.1.0
-#
-# Gerüst aus Arbeitspaket 1 (REQ-01). Eingaben, Check-Run und Kommentarlogik folgen in
-# Arbeitspaket 7 bis 9 (REQ-16 bis REQ-23) und ersetzen diese Platzhalterwerte.
 
 name: "Attesta Zyklus"
 description: "Prüft Arbeitspakete gegen Kritikalität, Delegationsstufe und Gate-Checkliste."
 author: "PROSTRUCTIVE® Consulting & Management"
+
+inputs:
+  github-token:
+    description: "Token mit contents: read, issues: write, pull-requests: write, checks: write."
+    required: true
+  lizenzschluessel:
+    description: "Signierter Lizenzschluessel. Optional, eine abgelaufene oder fehlende Lizenz haelt den Lauf nicht an (REQ-35)."
+    required: false
 
 runs:
   using: "node20"

@@ -24609,20 +24609,20 @@ function requireInt() {
   }
   function parseYamlInteger(data) {
     let value = data;
-    let sign = 1;
+    let sign2 = 1;
     let ch = value[0];
     if (ch === "-" || ch === "+") {
-      if (ch === "-") sign = -1;
+      if (ch === "-") sign2 = -1;
       value = value.slice(1);
       ch = value[0];
     }
     if (value === "0") return 0;
     if (ch === "0") {
-      if (value[1] === "b") return sign * parseInt(value.slice(2), 2);
-      if (value[1] === "x") return sign * parseInt(value.slice(2), 16);
-      if (value[1] === "o") return sign * parseInt(value.slice(2), 8);
+      if (value[1] === "b") return sign2 * parseInt(value.slice(2), 2);
+      if (value[1] === "x") return sign2 * parseInt(value.slice(2), 16);
+      if (value[1] === "o") return sign2 * parseInt(value.slice(2), 8);
     }
-    return sign * parseInt(value, 10);
+    return sign2 * parseInt(value, 10);
   }
   function constructYamlInteger(data) {
     return parseYamlInteger(data);
@@ -24685,16 +24685,16 @@ function requireFloat() {
   }
   function constructYamlFloat(data) {
     let value = data.toLowerCase();
-    const sign = value[0] === "-" ? -1 : 1;
+    const sign2 = value[0] === "-" ? -1 : 1;
     if ("+-".indexOf(value[0]) >= 0) {
       value = value.slice(1);
     }
     if (value === ".inf") {
-      return sign === 1 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+      return sign2 === 1 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
     } else if (value === ".nan") {
       return NaN;
     }
-    return sign * parseFloat(value, 10);
+    return sign2 * parseFloat(value, 10);
   }
   const SCIENTIFIC_WITHOUT_DOT = /^[-+]?[0-9]+e/;
   function representYamlFloat(object, style) {
@@ -27285,6 +27285,55 @@ async function schreibeUrsache(client, ziel, ursache) {
   return pfad;
 }
 
+// src/gemeinsam/lizenz.ts
+var import_node_crypto = require("node:crypto");
+
+// src/gemeinsam/lizenz-oeffentlicher-schluessel.ts
+var LIZENZ_OEFFENTLICHER_SCHLUESSEL = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAFjVFZvTRnO2EtmcozM9B8jKYrC4TirrYcKpTNYNC7rU=
+-----END PUBLIC KEY-----
+`;
+
+// src/gemeinsam/lizenz.ts
+function pruefeSignatur(schluessel, oeffentlicherSchluesselPem) {
+  const teile = schluessel.split(".");
+  if (teile.length !== 2) return null;
+  try {
+    const nutzlast = Buffer.from(teile[0], "base64url");
+    const signatur = Buffer.from(teile[1], "base64url");
+    if (!(0, import_node_crypto.verify)(null, nutzlast, oeffentlicherSchluesselPem, signatur)) return null;
+    const daten = JSON.parse(nutzlast.toString("utf-8"));
+    if (typeof daten !== "object" || daten === null) return null;
+    if (typeof daten.empfaenger !== "string" || typeof daten.gueltig_bis !== "string" || typeof daten.stufe !== "string" || typeof daten.ausgestellt_am !== "string") {
+      return null;
+    }
+    return daten;
+  } catch {
+    return null;
+  }
+}
+function pruefeLizenz(schluessel, jetzt = /* @__PURE__ */ new Date(), oeffentlicherSchluesselPem = LIZENZ_OEFFENTLICHER_SCHLUESSEL) {
+  if (!schluessel) return { zustand: "fehlt" };
+  const daten = pruefeSignatur(schluessel, oeffentlicherSchluesselPem);
+  if (!daten) return { zustand: "ungueltig" };
+  if (new Date(daten.gueltig_bis).getTime() < jetzt.getTime()) {
+    return { zustand: "abgelaufen", daten };
+  }
+  return { zustand: "gueltig", daten };
+}
+var DREISSIG_TAGE_MS = 30 * 24 * 60 * 60 * 1e3;
+function formatiereLizenzhinweis(ergebnis) {
+  if (ergebnis.zustand === "gueltig") return null;
+  if (ergebnis.zustand === "fehlt") return "Kein Lizenzschluessel hinterlegt.";
+  if (ergebnis.zustand === "ungueltig") return "Lizenzschluessel ungueltig, Signatur nicht pruefbar.";
+  return `Lizenz abgelaufen am ${ergebnis.daten?.gueltig_bis}.`;
+}
+function istHinweisDringend(ergebnis, jetzt = /* @__PURE__ */ new Date()) {
+  if (ergebnis.zustand !== "abgelaufen" || !ergebnis.daten) return false;
+  const ablauf = new Date(ergebnis.daten.gueltig_bis).getTime();
+  return jetzt.getTime() - ablauf > DREISSIG_TAGE_MS;
+}
+
 // src/action/index.ts
 var ZEITGRENZE_MS = 6e4;
 var ATTESTA_YML = "attesta.yml";
@@ -27292,7 +27341,15 @@ function arbeitsverzeichnis() {
   return process.env.GITHUB_WORKSPACE ?? process.cwd();
 }
 async function behandleGrundlauf(octokit, owner, repo, prNummer, branch, sha) {
-  const body = ["## Attesta Zyklus", "", "Anforderungspruefung noch nicht implementiert, siehe REQ-24 bis REQ-26.", "", "Ursachencode, ein Klick setzt genau ein Feld:", "", formatiereAnkreuzfelder()].join("\n");
+  const teile = ["## Attesta Zyklus", "", "Anforderungspruefung noch nicht implementiert, siehe REQ-24 bis REQ-26.", "", "Ursachencode, ein Klick setzt genau ein Feld:", "", formatiereAnkreuzfelder()];
+  const lizenzErgebnis = pruefeLizenz(core2.getInput("lizenzschluessel") || void 0);
+  const lizenzHinweis = formatiereLizenzhinweis(lizenzErgebnis);
+  if (lizenzHinweis && istHinweisDringend(lizenzErgebnis)) {
+    teile.unshift(`**${lizenzHinweis}**`, "");
+  } else if (lizenzHinweis) {
+    teile.push("", `_${lizenzHinweis}_`);
+  }
+  const body = teile.join("\n");
   try {
     await mitWiederholungBeiRatenbegrenzung(() => schreibeFestenKommentar(octokit, { owner, repo, pullNummer: prNummer }, body));
   } catch (e) {
