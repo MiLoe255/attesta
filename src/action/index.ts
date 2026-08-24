@@ -8,7 +8,9 @@
  * (api.github.com, siehe github.ts), ein fester Kommentar, ein
  * Check-Run, Notfallpfad und Beobachtungsmodus als Ueberschreibung des
  * Check-Run-Zustands, Ursachencode als Datei, Lizenzhinweis,
- * Monatsbericht als Pull Request, Anforderungsguete auf Issue-Texten.
+ * Monatsbericht als Pull Request, Anforderungsguete auf Issue-Texten,
+ * Gate-3-Nachweis per Selbstauskunft (/attesta gate3 bestanden, siehe
+ * gate3.ts).
  *
  * Der Zustand des Grundlauf-Check-Runs bleibt weiterhin ein Platzhalter:
  * REQ-26 (Nachweisgrad) ist als reine Funktion gebaut und getestet
@@ -44,6 +46,8 @@ import { pruefeAnforderungMitRegelsatz } from "../gemeinsam/guete";
 import { formatiereBefund } from "../gemeinsam/meldung";
 import { bestimmeDelegationsreife } from "../gemeinsam/delegationsreife";
 import { ermittleStufenBedingungen } from "./delegationsreife-ermittlung";
+import { erzeugeGate3Attest, GATE3_PFAD, istGate3Befehl, leseBegruendung } from "./gate3";
+import { schreibeGate3Attest } from "./gate3speicher";
 
 const ZEITGRENZE_MS = 60_000;
 const ATTESTA_YML = "attesta.yml";
@@ -139,6 +143,29 @@ async function verarbeiteUrsachenEintrag(octokit: Octokit, owner: string, repo: 
   core.info(`Ursachencode ${wert} abgelegt unter ${pfad}, gesetzt von ${gesetztVon}`);
 }
 
+/**
+ * Gate-3-Nachweis-Konvention (Entscheidung vom 24.08.2026). Selbstauskunft,
+ * kein objektiver Beleg: dieselbe Freigaberecht-Pruefung wie beim
+ * Ursachenwert "wollen". Fehlerverhalten: fehlt die Begruendung, wird das
+ * fehlende Feld benannt statt den Befehl schweigend zu verwerfen.
+ */
+async function behandleGate3Befehl(octokit: Octokit, owner: string, repo: string, prNummer: number, kommentarBody: string, bestaetigtVon: string): Promise<void> {
+  const berechtigt = await ermittleFreigaberecht(octokit, owner, repo, bestaetigtVon);
+  if (!berechtigt) {
+    core.warning(`Ablehnung: Gate-3-Bestaetigung erfordert Freigaberecht (admin oder write). ${bestaetigtVon} hat es nicht.`);
+    return;
+  }
+  const begruendung = leseBegruendung(kommentarBody);
+  if (!begruendung) {
+    core.warning('Gate-3-Bestaetigung ohne Begruendung. Aufruf: /attesta gate3 bestanden <Begruendung>');
+    return;
+  }
+  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  const attest = erzeugeGate3Attest({ bestaetigtVon, datum: new Date(), begruendung });
+  await schreibeGate3Attest(octokit, { owner, repo, branch: pr.head.ref }, attest);
+  core.info(`Gate 3 bestaetigt von ${bestaetigtVon}, abgelegt unter ${GATE3_PFAD}`);
+}
+
 async function behandleKommentarEreignis(octokit: Octokit, owner: string, repo: string): Promise<void> {
   const comment = context.payload.comment as { body?: string; user?: { login: string } } | undefined;
   const issue = context.payload.issue as { pull_request?: unknown; number: number } | undefined;
@@ -164,6 +191,11 @@ async function behandleKommentarEreignis(octokit: Octokit, owner: string, repo: 
 
   if (istNotfallBefehl(comment.body)) {
     await behandleNotfallBefehl(octokit, owner, repo, issue.number, gesetztVon);
+    return;
+  }
+
+  if (istGate3Befehl(comment.body)) {
+    await behandleGate3Befehl(octokit, owner, repo, issue.number, comment.body, gesetztVon);
     return;
   }
 

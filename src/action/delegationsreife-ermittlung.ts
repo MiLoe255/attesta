@@ -3,11 +3,13 @@
  * REQ-32. Stufe 1 aus Dateipraesenz, Stufe 2 als Indiz aus der
  * PR-Historie (Entscheidung vom 24.08.2026: Branch-Protection-Abfrage
  * braeuchte administration: read, ein fuenftes Recht gegen REQ-16),
- * Stufe 3 nur teilweise: "Leitplanken maschinenlesbar" ist pruefbar,
- * "Gate 3 durchlaufen" hat keinen Nachweis-Mechanismus im 47er-Bestand
- * und bleibt strukturell immer unerfuellt (siehe delegationsreife.ts).
+ * Stufe 3: "Leitplanken maschinenlesbar" ist pruefbar, "Gate 3
+ * durchlaufen" hat keinen automatischen Nachweis und stuetzt sich auf
+ * die Gate-3-Nachweis-Konvention (gate3.ts, Entscheidung vom
+ * 24.08.2026): eine Selbstauskunft-Datei, kein objektiver Beleg.
  */
 import type { StufenBedingungen } from "../gemeinsam/delegationsreife";
+import { GATE3_PFAD } from "./gate3";
 
 export interface ErmittlungsZiel {
   owner: string;
@@ -105,11 +107,14 @@ async function ermittleStufe3(client: ErmittlungsClient, ziel: ErmittlungsZiel):
       return false;
     }
   })();
-  const [claudeMd, agentsMd] = await Promise.all([existiertDatei(client, ziel, "CLAUDE.md"), existiertDatei(client, ziel, "AGENTS.md")]);
+  const [claudeMd, agentsMd, gate3Durchlaufen] = await Promise.all([
+    existiertDatei(client, ziel, "CLAUDE.md"),
+    existiertDatei(client, ziel, "AGENTS.md"),
+    existiertDatei(client, ziel, GATE3_PFAD),
+  ]);
   const leitplankenMaschinenlesbar = workflowVerzeichnis && (claudeMd || agentsMd);
 
-  // "Gate 3 durchlaufen" hat keinen Nachweis-Mechanismus, siehe Dateikopf.
-  return { leitplankenMaschinenlesbar, gate3Durchlaufen: false };
+  return { leitplankenMaschinenlesbar, gate3Durchlaufen };
 }
 
 export async function ermittleStufenBedingungen(client: ErmittlungsClient, ziel: ErmittlungsZiel): Promise<StufenBedingungen> {

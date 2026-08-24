@@ -55,7 +55,7 @@ export function bestimmeDelegationsreife(b: StufenBedingungen): Delegationsreife
   const stufe2 = stufe1 && b.stufe2.pruefungenVerbindlich && b.stufe2.vierAugenBelegt && b.stufe2.keinSelbstMerge;
 
   if (!b.stufe3.leitplankenMaschinenlesbar) fehlend.push("maschinenlesbare Leitplanken");
-  if (!b.stufe3.gate3Durchlaufen) fehlend.push("durchlaufenes Gate 3 (kein automatischer Nachweis vorgesehen)");
+  if (!b.stufe3.gate3Durchlaufen) fehlend.push("durchlaufenes Gate 3 (Selbstauskunft ueber /attesta gate3 bestanden <Begruendung>)");
   const stufe3 = stufe2 && b.stufe3.leitplankenMaschinenlesbar && b.stufe3.gate3Durchlaufen;
 
   const stufe: DelegationsreifeStufe = stufe3 ? 3 : stufe2 ? 2 : 1;

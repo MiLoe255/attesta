@@ -31026,10 +31026,25 @@ function bestimmeDelegationsreife(b) {
   if (!b.stufe2.keinSelbstMerge) fehlend.push("kein Selbst-Merge");
   const stufe2 = stufe1 && b.stufe2.pruefungenVerbindlich && b.stufe2.vierAugenBelegt && b.stufe2.keinSelbstMerge;
   if (!b.stufe3.leitplankenMaschinenlesbar) fehlend.push("maschinenlesbare Leitplanken");
-  if (!b.stufe3.gate3Durchlaufen) fehlend.push("durchlaufenes Gate 3 (kein automatischer Nachweis vorgesehen)");
+  if (!b.stufe3.gate3Durchlaufen) fehlend.push("durchlaufenes Gate 3 (Selbstauskunft ueber /attesta gate3 bestanden <Begruendung>)");
   const stufe3 = stufe2 && b.stufe3.leitplankenMaschinenlesbar && b.stufe3.gate3Durchlaufen;
   const stufe = stufe3 ? 3 : stufe2 ? 2 : 1;
   return { stufe, fehlend };
+}
+
+// src/action/gate3.ts
+var GATE3_BEFEHL = /^\/attesta\s+gate3\s+bestanden\s+(.+)$/i;
+var GATE3_PFAD = "attesta/gates/p3-bestanden.yaml";
+function istGate3Befehl(kommentarBody) {
+  return GATE3_BEFEHL.test(kommentarBody.trim());
+}
+function leseBegruendung(kommentarBody) {
+  const treffer = kommentarBody.trim().match(GATE3_BEFEHL);
+  const begruendung = treffer?.[1]?.trim();
+  return begruendung ? begruendung : null;
+}
+function erzeugeGate3Attest(params) {
+  return { bestaetigt_von: params.bestaetigtVon, datum: params.datum.toISOString(), begruendung: params.begruendung };
 }
 
 // src/action/delegationsreife-ermittlung.ts
@@ -31085,13 +31100,22 @@ async function ermittleStufe3(client, ziel) {
       return false;
     }
   })();
-  const [claudeMd, agentsMd] = await Promise.all([existiertDatei(client, ziel, "CLAUDE.md"), existiertDatei(client, ziel, "AGENTS.md")]);
+  const [claudeMd, agentsMd, gate3Durchlaufen] = await Promise.all([
+    existiertDatei(client, ziel, "CLAUDE.md"),
+    existiertDatei(client, ziel, "AGENTS.md"),
+    existiertDatei(client, ziel, GATE3_PFAD)
+  ]);
   const leitplankenMaschinenlesbar = workflowVerzeichnis && (claudeMd || agentsMd);
-  return { leitplankenMaschinenlesbar, gate3Durchlaufen: false };
+  return { leitplankenMaschinenlesbar, gate3Durchlaufen };
 }
 async function ermittleStufenBedingungen(client, ziel) {
   const [stufe1, stufe2, stufe3] = await Promise.all([ermittleStufe1(client, ziel), ermittleStufe2(client, ziel), ermittleStufe3(client, ziel)]);
   return { stufe1, stufe2, stufe3 };
+}
+
+// src/action/gate3speicher.ts
+async function schreibeGate3Attest(client, ziel, attest) {
+  await legeDateiAb(client, { ...ziel, pfad: GATE3_PFAD }, dump(attest, { lineWidth: -1 }), `Gate 3 bestaetigt von ${attest.bestaetigt_von}`);
 }
 
 // src/action/index.ts
@@ -31168,6 +31192,22 @@ async function verarbeiteUrsachenEintrag(octokit, owner, repo, prNummer, wert, g
   const pfad = await schreibeUrsache(octokit, { owner, repo, branch: pr.head.ref }, ursache);
   core2.info(`Ursachencode ${wert} abgelegt unter ${pfad}, gesetzt von ${gesetztVon}`);
 }
+async function behandleGate3Befehl(octokit, owner, repo, prNummer, kommentarBody, bestaetigtVon) {
+  const berechtigt = await ermittleFreigaberecht(octokit, owner, repo, bestaetigtVon);
+  if (!berechtigt) {
+    core2.warning(`Ablehnung: Gate-3-Bestaetigung erfordert Freigaberecht (admin oder write). ${bestaetigtVon} hat es nicht.`);
+    return;
+  }
+  const begruendung = leseBegruendung(kommentarBody);
+  if (!begruendung) {
+    core2.warning("Gate-3-Bestaetigung ohne Begruendung. Aufruf: /attesta gate3 bestanden <Begruendung>");
+    return;
+  }
+  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  const attest = erzeugeGate3Attest({ bestaetigtVon, datum: /* @__PURE__ */ new Date(), begruendung });
+  await schreibeGate3Attest(octokit, { owner, repo, branch: pr.head.ref }, attest);
+  core2.info(`Gate 3 bestaetigt von ${bestaetigtVon}, abgelegt unter ${GATE3_PFAD}`);
+}
 async function behandleKommentarEreignis(octokit, owner, repo) {
   const comment = import_github2.context.payload.comment;
   const issue = import_github2.context.payload.issue;
@@ -31190,6 +31230,10 @@ async function behandleKommentarEreignis(octokit, owner, repo) {
   if (import_github2.context.payload.action !== "created") return;
   if (istNotfallBefehl(comment.body)) {
     await behandleNotfallBefehl(octokit, owner, repo, issue.number, gesetztVon);
+    return;
+  }
+  if (istGate3Befehl(comment.body)) {
+    await behandleGate3Befehl(octokit, owner, repo, issue.number, comment.body, gesetztVon);
     return;
   }
   if (istUrsachenBefehl(comment.body)) {
