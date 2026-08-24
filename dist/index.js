@@ -27251,6 +27251,40 @@ function wendeUeberschreibungenAn(roherZustand, grund) {
   return roherZustand;
 }
 
+// src/action/freigabe.ts
+var FREIGABESTUFEN = /* @__PURE__ */ new Set(["admin", "write"]);
+function hatFreigaberecht(stufe) {
+  return FREIGABESTUFEN.has(stufe);
+}
+async function ermittleFreigaberecht(client, owner, repo, username) {
+  const { data } = await client.rest.repos.getCollaboratorPermissionLevel({ owner, repo, username });
+  return hatFreigaberecht(data.permission);
+}
+
+// src/action/ursachendatei.ts
+var ZULAESSIGE_WERTE = URSACHEN.map((ursache) => ursache.kennung);
+var VORSCHLAGBARE_WERTE = ZULAESSIGE_WERTE.filter((wert) => wert !== "wollen");
+function pfadFuerUrsache(vorgang, zeitpunkt) {
+  return `attesta/ursachen/${vorgang}-${zeitpunkt.replace(/[:.]/g, "-")}.yaml`;
+}
+function erzeugeUrsachendatei(params) {
+  return {
+    vorgang: params.vorgang,
+    wert: params.wert,
+    zeitpunkt: params.zeitpunkt.toISOString(),
+    gesetzt_von: params.gesetztVon,
+    vorschlag: params.vorschlag,
+    uebernommen: params.vorschlag !== void 0 && params.vorschlag === params.wert
+  };
+}
+
+// src/action/ursachenspeicher.ts
+async function schreibeUrsache(client, ziel, ursache) {
+  const pfad = pfadFuerUrsache(ursache.vorgang, ursache.zeitpunkt);
+  await legeDateiAb(client, { ...ziel, pfad }, dump(ursache, { lineWidth: -1 }), `Ursachencode gesetzt: ${ursache.wert} fuer ${ursache.vorgang}`);
+  return pfad;
+}
+
 // src/action/index.ts
 var ZEITGRENZE_MS = 6e4;
 var ATTESTA_YML = "attesta.yml";
@@ -27297,6 +27331,19 @@ async function behandleNotfallBefehl(octokit, owner, repo, prNummer, ausgerufenV
     })
   );
 }
+async function verarbeiteUrsachenEintrag(octokit, owner, repo, prNummer, wert, gesetztVon) {
+  if (wert === "wollen") {
+    const berechtigt = await ermittleFreigaberecht(octokit, owner, repo, gesetztVon);
+    if (!berechtigt) {
+      core2.warning(`Ablehnung: "wollen" erfordert Freigaberecht (admin oder write). ${gesetztVon} hat es nicht.`);
+      return;
+    }
+  }
+  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  const ursache = erzeugeUrsachendatei({ vorgang: `pr-${prNummer}`, wert, zeitpunkt: /* @__PURE__ */ new Date(), gesetztVon });
+  const pfad = await schreibeUrsache(octokit, { owner, repo, branch: pr.head.ref }, ursache);
+  core2.info(`Ursachencode ${wert} abgelegt unter ${pfad}, gesetzt von ${gesetztVon}`);
+}
 async function behandleKommentarEreignis(octokit, owner, repo) {
   const comment = import_github2.context.payload.comment;
   const issue = import_github2.context.payload.issue;
@@ -27304,17 +27351,21 @@ async function behandleKommentarEreignis(octokit, owner, repo) {
     core2.info("kein Kommentar an einem Pull Request, nichts zu tun");
     return;
   }
+  const absender = import_github2.context.payload.sender;
+  const gesetztVon = absender?.login ?? comment.user?.login ?? "unbekannt";
   if (import_github2.context.payload.action === "edited") {
     const ergebnis = werteAnkreuzfelderAus(comment.body);
     core2.info(`Ankreuzfelder-Ergebnis: ${JSON.stringify(ergebnis)}`);
     if (ergebnis.art === "rueckfrage") {
       core2.warning(`Mehrere Ankreuzfelder gesetzt: ${ergebnis.kandidaten.join(", ")}. Kein Eintrag, Rueckfrage noetig.`);
+    } else if (ergebnis.art === "eintrag") {
+      await verarbeiteUrsachenEintrag(octokit, owner, repo, issue.number, ergebnis.kennung, gesetztVon);
     }
     return;
   }
   if (import_github2.context.payload.action !== "created") return;
   if (istNotfallBefehl(comment.body)) {
-    await behandleNotfallBefehl(octokit, owner, repo, issue.number, comment.user?.login ?? "unbekannt");
+    await behandleNotfallBefehl(octokit, owner, repo, issue.number, gesetztVon);
     return;
   }
   if (istUrsachenBefehl(comment.body)) {
@@ -27322,6 +27373,8 @@ async function behandleKommentarEreignis(octokit, owner, repo) {
     core2.info(`Befehl-Ergebnis: ${JSON.stringify(ergebnis)}`);
     if (ergebnis.art === "unbekannter_wert") {
       core2.warning(`Unbekannter Wert "${ergebnis.wert}". Zulaessig: ${ergebnis.zulaessig.join(", ")}.`);
+    } else if (ergebnis.art === "eintrag") {
+      await verarbeiteUrsachenEintrag(octokit, owner, repo, issue.number, ergebnis.kennung, gesetztVon);
     }
   }
 }
