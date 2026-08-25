@@ -12,6 +12,7 @@ import { ladeProfilBasis } from "../gemeinsam/regelsatz";
 import { formatiereProfildatei } from "../gemeinsam/profildatei";
 import { KonsoleFehler } from "../gemeinsam/fehler";
 import { listeBasiswechsel, type Lock } from "../gemeinsam/profilvergleich";
+import { EIGENE_ROLLEN_PFAD, EIGENE_ROLLEN_VORLAGE } from "../gemeinsam/eigene-rollen";
 import type { Befehl } from "./befehl";
 
 export interface InitErgebnis {
@@ -71,6 +72,12 @@ export function fuehreInitAus(zielVerzeichnis: string, optionen: InitOptionen = 
     writeFileSync(betriebskennungPfad, randomUUID(), "utf-8");
   }
 
+  // Betriebseigene Rollen: gehoert dem Kunden, wird nie ueberschrieben.
+  const eigeneRollenPfad = join(zielVerzeichnis, ...EIGENE_ROLLEN_PFAD.split("/"));
+  if (!existsSync(eigeneRollenPfad)) {
+    writeFileSync(eigeneRollenPfad, EIGENE_ROLLEN_VORLAGE, "utf-8");
+  }
+
   return { profilVerzeichnis, lockPfad, geschriebeneDateien };
 }
 
@@ -104,7 +111,7 @@ export const initBefehl: Befehl = {
   hilfe(): void {
     console.log("attesta init [--ueberschreiben]");
     console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
-    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock, attesta/betriebskennung");
+    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock, attesta/betriebskennung, attesta/rollen-eigene.yaml");
   },
   fuehreAus(argv: string[]): number {
     const ueberschreiben = argv.includes("--ueberschreiben");

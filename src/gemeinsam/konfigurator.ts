@@ -19,6 +19,7 @@
 import { ladeProfilBasis, type ProfilBasis } from "./regelsatz";
 import { formatiereProfildatei } from "./profildatei";
 import { WORKFLOW_PFAD, WORKFLOW_VORLAGE, ISSUE_FORMULAR_PFAD, ISSUE_FORMULAR_VORLAGE } from "./vorlagen";
+import { EIGENE_ROLLEN_PFAD, EIGENE_ROLLEN_VORLAGE } from "./eigene-rollen";
 
 export interface Datei {
   pfad: string;
@@ -30,7 +31,12 @@ export function sammleDateien(basis: ProfilBasis = ladeProfilBasis()): Datei[] {
     pfad: `attesta/profil/${datei.dateiname}`,
     inhalt: formatiereProfildatei(datei, basis.basisversion),
   }));
-  return [...profilDateien, { pfad: WORKFLOW_PFAD, inhalt: WORKFLOW_VORLAGE }, { pfad: ISSUE_FORMULAR_PFAD, inhalt: ISSUE_FORMULAR_VORLAGE }];
+  return [
+    ...profilDateien,
+    { pfad: EIGENE_ROLLEN_PFAD, inhalt: EIGENE_ROLLEN_VORLAGE },
+    { pfad: WORKFLOW_PFAD, inhalt: WORKFLOW_VORLAGE },
+    { pfad: ISSUE_FORMULAR_PFAD, inhalt: ISSUE_FORMULAR_VORLAGE },
+  ];
 }
 
 function escapeHtml(text: string): string {

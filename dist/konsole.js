@@ -2,7 +2,7 @@
 "use strict";
 
 // src/konsole/init.ts
-var import_node_fs2 = require("node:fs");
+var import_node_fs3 = require("node:fs");
 var import_node_crypto = require("node:crypto");
 var import_node_path = require("node:path");
 
@@ -3116,94 +3116,8 @@ function listeBasiswechsel(lockPfad, neueBasis) {
   });
 }
 
-// src/konsole/init.ts
-function fuehreInitAus(zielVerzeichnis, optionen = {}) {
-  const ueberschreiben = optionen.ueberschreiben ?? false;
-  const jetzt = optionen.jetzt ?? (() => (/* @__PURE__ */ new Date()).toISOString());
-  const basis = (0, import_attesta_core.ladeProfilBasis)();
-  const profilVerzeichnis = (0, import_node_path.join)(zielVerzeichnis, "attesta", "profil");
-  const lockPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "profil.lock");
-  if (!ueberschreiben) {
-    const vorhanden = basis.dateien.map((d) => (0, import_node_path.join)(profilVerzeichnis, d.dateiname)).filter((pfad) => (0, import_node_fs2.existsSync)(pfad));
-    if (vorhanden.length > 0) {
-      throw new KonsoleFehler(
-        `Profil existiert bereits: ${vorhanden.join(", ")}. Mit --ueberschreiben erneut ausfuehren, um zu ersetzen.`,
-        1
-      );
-    }
-  }
-  (0, import_node_fs2.mkdirSync)(profilVerzeichnis, { recursive: true });
-  const zeitpunkt = jetzt();
-  const lock = {};
-  const geschriebeneDateien = [];
-  for (const datei of basis.dateien) {
-    const inhalt = formatiereProfildatei(datei, basis.basisversion);
-    const ziel = (0, import_node_path.join)(profilVerzeichnis, datei.dateiname);
-    (0, import_node_fs2.writeFileSync)(ziel, inhalt, "utf-8");
-    geschriebeneDateien.push(ziel);
-    lock[datei.dateiname] = {
-      pruefsumme: datei.pruefsumme,
-      basisversion: basis.basisversion,
-      erzeugt_am: zeitpunkt
-    };
-  }
-  (0, import_node_fs2.writeFileSync)(lockPfad, dump(lock, { lineWidth: -1, noRefs: true }), "utf-8");
-  const betriebskennungPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "betriebskennung");
-  if (!(0, import_node_fs2.existsSync)(betriebskennungPfad)) {
-    (0, import_node_fs2.writeFileSync)(betriebskennungPfad, (0, import_node_crypto.randomUUID)(), "utf-8");
-  }
-  return { profilVerzeichnis, lockPfad, geschriebeneDateien };
-}
-function zeigeBasiswechsel(zielVerzeichnis) {
-  const lockPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "profil.lock");
-  if (!(0, import_node_fs2.existsSync)(lockPfad)) return;
-  const aenderungen = listeBasiswechsel(lockPfad, (0, import_attesta_core.ladeProfilBasis)()).filter((eintrag) => eintrag.aendertSich);
-  if (aenderungen.length === 0) {
-    console.log("Basiswechsel: keine Abweichung, das Profil entspricht der installierten Basis.");
-    return;
-  }
-  console.log(`Basiswechsel: ${aenderungen.length} Abweichung(en) werden ueberschrieben.`);
-  for (const eintrag of aenderungen) {
-    console.log(`  ${eintrag.dateiname}`);
-    console.log(`    alt: Basis ${eintrag.alteBasisversion ?? "unbekannt"}, ${eintrag.altePruefsumme ?? "keine Pruefsumme"}`);
-    console.log(`    neu: Basis ${eintrag.neueBasisversion}, ${eintrag.neuePruefsumme}`);
-  }
-}
-var initBefehl = {
-  name: "init",
-  hilfe() {
-    console.log("attesta init [--ueberschreiben]");
-    console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
-    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock, attesta/betriebskennung");
-  },
-  fuehreAus(argv) {
-    const ueberschreiben = argv.includes("--ueberschreiben");
-    if (ueberschreiben) {
-      zeigeBasiswechsel(process.cwd());
-    }
-    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben });
-    for (const datei of ergebnis.geschriebeneDateien) console.log(`geschrieben: ${datei}`);
-    console.log(`geschrieben: ${ergebnis.lockPfad}`);
-    return 0;
-  }
-};
-
-// src/konsole/pruefen.ts
-var pruefenBefehl = {
-  name: "pruefen",
-  hilfe() {
-    console.log("attesta pruefen <Pfad>");
-    console.log("  Eingabe:  Pfad im Kundenrepository");
-    console.log("  Ausgabe:  Befundliste, Rueckgabewert 0 ohne Befund, 1 bei Befund");
-  },
-  fuehreAus() {
-    console.log("attesta pruefen: fachliche Pruefung noch nicht implementiert");
-    return 0;
-  }
-};
-
-// src/konsole/guete.ts
-var import_node_fs3 = require("node:fs");
+// src/gemeinsam/eigene-rollen.ts
+var import_node_fs2 = require("node:fs");
 
 // src/gemeinsam/guete-regelsatz.generated.ts
 var GUETE_ROLLEN = [
@@ -3309,6 +3223,182 @@ var GUETE_TECHNOLOGIEN = [
   "kafka"
 ];
 
+// src/gemeinsam/eigene-rollen.ts
+var EIGENE_ROLLEN_PFAD = "attesta/rollen-eigene.yaml";
+var KENNUNG_MUSTER = /^[a-z][a-z0-9_]*$/;
+var MINDESTWOERTER_DEFINITION = 5;
+function grundbestandKennungen() {
+  return new Set(GUETE_ROLLEN.map((name) => name.toLowerCase().replace(/\s+/g, "_")));
+}
+function pruefeRolle(roh, index, bekannt, belegt) {
+  const stelle = `${EIGENE_ROLLEN_PFAD}, Eintrag ${index + 1}`;
+  const { kennung, anzeigename, definition } = roh;
+  if (!kennung || !KENNUNG_MUSTER.test(kennung)) {
+    return { befund: `${stelle}: kennung fehlt oder enthaelt andere Zeichen als Kleinbuchstaben, Ziffern und Unterstrich` };
+  }
+  if (bekannt.has(kennung)) {
+    return { befund: `${stelle}: kennung "${kennung}" gehoert bereits zum Grundbestand und wird nicht ueberschrieben` };
+  }
+  if (belegt.has(kennung)) {
+    return { befund: `${stelle}: kennung "${kennung}" kommt in der Datei mehrfach vor` };
+  }
+  if (!anzeigename || anzeigename.trim().length === 0) {
+    return { befund: `${stelle}: anzeigename fehlt` };
+  }
+  if (!definition || definition.trim().split(/\s+/).length < MINDESTWOERTER_DEFINITION) {
+    return { befund: `${stelle}: definition fehlt oder umfasst weniger als ${MINDESTWOERTER_DEFINITION} Woerter` };
+  }
+  return { rolle: { kennung, anzeigename: anzeigename.trim(), definition } };
+}
+function leseEigeneRollen(wurzel) {
+  const pfad = `${wurzel}/${EIGENE_ROLLEN_PFAD}`;
+  if (!(0, import_node_fs2.existsSync)(pfad)) return { rollen: [], befunde: [] };
+  let geparst;
+  try {
+    geparst = load((0, import_node_fs2.readFileSync)(pfad, "utf-8"));
+  } catch {
+    return { rollen: [], befunde: [`${EIGENE_ROLLEN_PFAD}: kein gueltiges YAML, der Grundbestand gilt weiter`] };
+  }
+  if (geparst === null || geparst === void 0) return { rollen: [], befunde: [] };
+  if (typeof geparst !== "object") {
+    return { rollen: [], befunde: [`${EIGENE_ROLLEN_PFAD}: kein YAML-Objekt, der Grundbestand gilt weiter`] };
+  }
+  const liste = geparst.rollen;
+  if (liste === void 0 || liste === null) return { rollen: [], befunde: [] };
+  if (!Array.isArray(liste)) {
+    return { rollen: [], befunde: [`${EIGENE_ROLLEN_PFAD}: das Feld "rollen" ist keine Liste`] };
+  }
+  const bekannt = grundbestandKennungen();
+  const belegt = /* @__PURE__ */ new Set();
+  const rollen = [];
+  const befunde = [];
+  liste.forEach((roh, index) => {
+    const { rolle, befund } = pruefeRolle(roh ?? {}, index, bekannt, belegt);
+    if (befund) {
+      befunde.push(befund);
+      return;
+    }
+    if (rolle) {
+      belegt.add(rolle.kennung);
+      rollen.push(rolle.anzeigename);
+    }
+  });
+  return { rollen, befunde };
+}
+var EIGENE_ROLLEN_VORLAGE = `# Betriebseigene Rollen, zusaetzlich zum Grundbestand aus rules/rollen.yaml.
+#
+# Diese Datei gehoert dir. Sie ist kein Teil des Profils und wird nicht
+# gegen die Profilbasis geprueft. Traege hier die Rollennamen ein, die in
+# deinem Betrieb tatsaechlich vorkommen, damit sie in Anforderungen als
+# benannter Akteur gelten.
+#
+# Regeln je Eintrag:
+#   kennung      Kleinbuchstaben, Ziffern und Unterstrich, nicht aus dem Grundbestand
+#   anzeigename  wie die Rolle in einer Anforderung geschrieben wird
+#   definition   mindestens fuenf Woerter
+#
+# Beispiel:
+# rollen:
+#   - kennung: produktionsleiter
+#     anzeigename: "Produktionsleiter"
+#     definition: "verantwortet die laufende Fertigung und den Ausschuss einer Schicht"
+
+rollen: []
+`;
+
+// src/konsole/init.ts
+function fuehreInitAus(zielVerzeichnis, optionen = {}) {
+  const ueberschreiben = optionen.ueberschreiben ?? false;
+  const jetzt = optionen.jetzt ?? (() => (/* @__PURE__ */ new Date()).toISOString());
+  const basis = (0, import_attesta_core.ladeProfilBasis)();
+  const profilVerzeichnis = (0, import_node_path.join)(zielVerzeichnis, "attesta", "profil");
+  const lockPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "profil.lock");
+  if (!ueberschreiben) {
+    const vorhanden = basis.dateien.map((d) => (0, import_node_path.join)(profilVerzeichnis, d.dateiname)).filter((pfad) => (0, import_node_fs3.existsSync)(pfad));
+    if (vorhanden.length > 0) {
+      throw new KonsoleFehler(
+        `Profil existiert bereits: ${vorhanden.join(", ")}. Mit --ueberschreiben erneut ausfuehren, um zu ersetzen.`,
+        1
+      );
+    }
+  }
+  (0, import_node_fs3.mkdirSync)(profilVerzeichnis, { recursive: true });
+  const zeitpunkt = jetzt();
+  const lock = {};
+  const geschriebeneDateien = [];
+  for (const datei of basis.dateien) {
+    const inhalt = formatiereProfildatei(datei, basis.basisversion);
+    const ziel = (0, import_node_path.join)(profilVerzeichnis, datei.dateiname);
+    (0, import_node_fs3.writeFileSync)(ziel, inhalt, "utf-8");
+    geschriebeneDateien.push(ziel);
+    lock[datei.dateiname] = {
+      pruefsumme: datei.pruefsumme,
+      basisversion: basis.basisversion,
+      erzeugt_am: zeitpunkt
+    };
+  }
+  (0, import_node_fs3.writeFileSync)(lockPfad, dump(lock, { lineWidth: -1, noRefs: true }), "utf-8");
+  const betriebskennungPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "betriebskennung");
+  if (!(0, import_node_fs3.existsSync)(betriebskennungPfad)) {
+    (0, import_node_fs3.writeFileSync)(betriebskennungPfad, (0, import_node_crypto.randomUUID)(), "utf-8");
+  }
+  const eigeneRollenPfad = (0, import_node_path.join)(zielVerzeichnis, ...EIGENE_ROLLEN_PFAD.split("/"));
+  if (!(0, import_node_fs3.existsSync)(eigeneRollenPfad)) {
+    (0, import_node_fs3.writeFileSync)(eigeneRollenPfad, EIGENE_ROLLEN_VORLAGE, "utf-8");
+  }
+  return { profilVerzeichnis, lockPfad, geschriebeneDateien };
+}
+function zeigeBasiswechsel(zielVerzeichnis) {
+  const lockPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "profil.lock");
+  if (!(0, import_node_fs3.existsSync)(lockPfad)) return;
+  const aenderungen = listeBasiswechsel(lockPfad, (0, import_attesta_core.ladeProfilBasis)()).filter((eintrag) => eintrag.aendertSich);
+  if (aenderungen.length === 0) {
+    console.log("Basiswechsel: keine Abweichung, das Profil entspricht der installierten Basis.");
+    return;
+  }
+  console.log(`Basiswechsel: ${aenderungen.length} Abweichung(en) werden ueberschrieben.`);
+  for (const eintrag of aenderungen) {
+    console.log(`  ${eintrag.dateiname}`);
+    console.log(`    alt: Basis ${eintrag.alteBasisversion ?? "unbekannt"}, ${eintrag.altePruefsumme ?? "keine Pruefsumme"}`);
+    console.log(`    neu: Basis ${eintrag.neueBasisversion}, ${eintrag.neuePruefsumme}`);
+  }
+}
+var initBefehl = {
+  name: "init",
+  hilfe() {
+    console.log("attesta init [--ueberschreiben]");
+    console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
+    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock, attesta/betriebskennung, attesta/rollen-eigene.yaml");
+  },
+  fuehreAus(argv) {
+    const ueberschreiben = argv.includes("--ueberschreiben");
+    if (ueberschreiben) {
+      zeigeBasiswechsel(process.cwd());
+    }
+    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben });
+    for (const datei of ergebnis.geschriebeneDateien) console.log(`geschrieben: ${datei}`);
+    console.log(`geschrieben: ${ergebnis.lockPfad}`);
+    return 0;
+  }
+};
+
+// src/konsole/pruefen.ts
+var pruefenBefehl = {
+  name: "pruefen",
+  hilfe() {
+    console.log("attesta pruefen <Pfad>");
+    console.log("  Eingabe:  Pfad im Kundenrepository");
+    console.log("  Ausgabe:  Befundliste, Rueckgabewert 0 ohne Befund, 1 bei Befund");
+  },
+  fuehreAus() {
+    console.log("attesta pruefen: fachliche Pruefung noch nicht implementiert");
+    return 0;
+  }
+};
+
+// src/konsole/guete.ts
+var import_node_fs4 = require("node:fs");
+
 // src/gemeinsam/regex.ts
 function maskiere(wort) {
   return wort.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -3337,7 +3427,7 @@ function pruefeModalverb(text) {
 function pruefeAkteur(text, rollen) {
   const gefunden = rollen.find((rolle) => zaehleWortTreffer(text, rolle) > 0);
   if (!gefunden) {
-    return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml gefunden" };
+    return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml oder attesta/rollen-eigene.yaml gefunden" };
   }
   return { pruefung: "benannter Akteur", zustand: "erfuellt", details: gefunden };
 }
@@ -3395,9 +3485,9 @@ function pruefeAnforderung(text, regelsatz) {
   const gesamt = pruefungen.reduce((schlechtester, p) => RANG[p.zustand] > RANG[schlechtester] ? p.zustand : schlechtester, "erfuellt");
   return { gesamt, pruefungen };
 }
-function pruefeAnforderungMitRegelsatz(text) {
+function pruefeAnforderungMitRegelsatz(text, eigeneRollen = []) {
   return pruefeAnforderung(text, {
-    rollen: [...GUETE_ROLLEN],
+    rollen: [...GUETE_ROLLEN, ...eigeneRollen],
     unschaerfe: GUETE_UNSCHAERFE,
     technologien: [...GUETE_TECHNOLOGIEN]
   });
@@ -3422,11 +3512,13 @@ var gueteBefehl = {
     if (!pfad) {
       throw new KonsoleFehler("Aufruf: attesta guete <Pfad>", 2);
     }
-    if (!(0, import_node_fs3.existsSync)(pfad)) {
+    if (!(0, import_node_fs4.existsSync)(pfad)) {
       throw new KonsoleFehler(`Pfad nicht gefunden: ${pfad}`, 2);
     }
-    const text = (0, import_node_fs3.readFileSync)(pfad, "utf-8");
-    const ergebnis = pruefeAnforderungMitRegelsatz(text);
+    const text = (0, import_node_fs4.readFileSync)(pfad, "utf-8");
+    const eigene = leseEigeneRollen(process.cwd());
+    for (const befund of eigene.befunde) console.log(`Hinweis: ${befund}`);
+    const ergebnis = pruefeAnforderungMitRegelsatz(text, eigene.rollen);
     let befundGefunden = false;
     for (const pruefung of ergebnis.pruefungen) {
       if (pruefung.zustand === "erfuellt") continue;
@@ -3530,14 +3622,14 @@ function erzeugeKennzahlenDatensatz(params) {
 }
 
 // src/konsole/kennzahlen-lokal.ts
-var import_node_fs4 = require("node:fs");
+var import_node_fs5 = require("node:fs");
 var import_node_path2 = require("node:path");
 function leseYamlVerzeichnis(pfad) {
-  if (!(0, import_node_fs4.existsSync)(pfad)) return [];
+  if (!(0, import_node_fs5.existsSync)(pfad)) return [];
   const ergebnisse = [];
-  for (const datei of (0, import_node_fs4.readdirSync)(pfad)) {
+  for (const datei of (0, import_node_fs5.readdirSync)(pfad)) {
     if (!datei.endsWith(".yaml") && !datei.endsWith(".yml")) continue;
-    const geparst = load((0, import_node_fs4.readFileSync)((0, import_node_path2.join)(pfad, datei), "utf-8"));
+    const geparst = load((0, import_node_fs5.readFileSync)((0, import_node_path2.join)(pfad, datei), "utf-8"));
     if (geparst && typeof geparst === "object") ergebnisse.push(geparst);
   }
   return ergebnisse;
@@ -3550,10 +3642,10 @@ function liesNotfaelleLokal(wurzel) {
 }
 function liesBetriebskennung(wurzel) {
   const pfad = (0, import_node_path2.join)(wurzel, "attesta", "betriebskennung");
-  return (0, import_node_fs4.existsSync)(pfad) ? (0, import_node_fs4.readFileSync)(pfad, "utf-8").trim() || void 0 : void 0;
+  return (0, import_node_fs5.existsSync)(pfad) ? (0, import_node_fs5.readFileSync)(pfad, "utf-8").trim() || void 0 : void 0;
 }
 function ermittleStufenBedingungenLokal(wurzel) {
-  const existiert = (relativerPfad) => (0, import_node_fs4.existsSync)((0, import_node_path2.join)(wurzel, relativerPfad));
+  const existiert = (relativerPfad) => (0, import_node_fs5.existsSync)((0, import_node_path2.join)(wurzel, relativerPfad));
   return {
     stufe1: {
       profilVorhanden: existiert("attesta/profil.lock"),

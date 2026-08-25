@@ -24,6 +24,13 @@
  * - Die Modalverbliste (muss, soll, kann) ist fest im Code, keine eigene
  *   Regelsatzdatei: sie ist Teil der REQ-Schreibkonvention selbst, nicht
  *   projektspezifisch wie Rollen oder Unschaerfewoerter.
+ * - Alle Pruefungen ausser der Modalverbpruefung lesen den **ganzen**
+ *   Text, nicht nur den normativen Satz. Eine Rolle, die irgendwo in der
+ *   Begruendung oder in einer Tabelle vorkommt, erfuellt die
+ *   Akteurspruefung deshalb mit. Das ist die bewusste Grenze einer
+ *   Pruefung auf Textebene: sie erkennt das Fehlen zuverlaessig und das
+ *   Vorhandensein nur ungefaehr. Die Modalverbpruefung grenzt als einzige
+ *   auf den zitierten Satz ein, weil dort das Zaehlen sonst falsch wird.
  *
  * pruefeAnforderungMitRegelsatz() liest Rollen, Unschaerfewoerter und
  * Technologien aus guete-regelsatz.generated.ts statt live ueber
@@ -90,7 +97,7 @@ function pruefeModalverb(text: string): PruefungsBefund {
 function pruefeAkteur(text: string, rollen: string[]): PruefungsBefund {
   const gefunden = rollen.find((rolle) => zaehleWortTreffer(text, rolle) > 0);
   if (!gefunden) {
-    return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml gefunden" };
+    return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml oder attesta/rollen-eigene.yaml gefunden" };
   }
   return { pruefung: "benannter Akteur", zustand: "erfuellt", details: gefunden };
 }
@@ -161,10 +168,18 @@ export function pruefeAnforderung(text: string, regelsatz: GueteRegelsatz): Guet
   return { gesamt, pruefungen };
 }
 
-/** REQ-25: derselbe Programmteil fuer Issue-Text und Datei, hier mit dem zur Build-Zeit eingefrorenen Regelsatz aus attesta-core. */
-export function pruefeAnforderungMitRegelsatz(text: string): GueteErgebnis {
+/**
+ * REQ-25: derselbe Programmteil fuer Issue-Text und Datei, mit dem zur
+ * Build-Zeit eingefrorenen Regelsatz aus attesta-core.
+ *
+ * `eigeneRollen` ergaenzt den generischen Grundbestand um die Rollen des
+ * Betriebs (siehe gemeinsam/eigene-rollen.ts). Beide Fundorte reichen
+ * dieselbe Liste herein, damit dieselbe Anforderung an beiden Stellen
+ * dasselbe Ergebnis liefert.
+ */
+export function pruefeAnforderungMitRegelsatz(text: string, eigeneRollen: string[] = []): GueteErgebnis {
   return pruefeAnforderung(text, {
-    rollen: [...GUETE_ROLLEN],
+    rollen: [...GUETE_ROLLEN, ...eigeneRollen],
     unschaerfe: GUETE_UNSCHAERFE as unknown as UnschaerfeWort[],
     technologien: [...GUETE_TECHNOLOGIEN],
   });
