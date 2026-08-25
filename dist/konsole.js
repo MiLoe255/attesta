@@ -3265,16 +3265,23 @@ var GUETE_TECHNOLOGIEN = [
   "kafka"
 ];
 
+// src/gemeinsam/regex.ts
+function maskiere(wort) {
+  return wort.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // src/gemeinsam/guete.ts
 var MODALVERBEN = ["muss", "soll", "kann"];
 function normativerSatz(text) {
   const zeilen = text.split("\n").filter((zeile) => zeile.trim().startsWith(">"));
   return zeilen.length > 0 ? zeilen.join(" ") : text;
 }
+function zaehleWortTreffer(text, wort) {
+  return (text.match(new RegExp(`\\b${maskiere(wort)}\\b`, "gi")) ?? []).length;
+}
 function pruefeModalverb(text) {
   const satz = normativerSatz(text);
-  const treffer = MODALVERBEN.filter((wort) => new RegExp(`\\b${wort}\\b`, "i").test(satz));
-  const anzahl = treffer.reduce((summe, wort) => summe + (satz.match(new RegExp(`\\b${wort}\\b`, "gi")) ?? []).length, 0);
+  const anzahl = MODALVERBEN.reduce((summe, wort) => summe + zaehleWortTreffer(satz, wort), 0);
   if (anzahl === 0) {
     return { pruefung: "Modalverb", zustand: "verletzt", details: "kein Modalverb (muss, soll, kann) gefunden" };
   }
@@ -3284,7 +3291,7 @@ function pruefeModalverb(text) {
   return { pruefung: "Modalverb", zustand: "erfuellt" };
 }
 function pruefeAkteur(text, rollen) {
-  const gefunden = rollen.find((rolle) => new RegExp(`\\b${rolle}\\b`, "i").test(text));
+  const gefunden = rollen.find((rolle) => zaehleWortTreffer(text, rolle) > 0);
   if (!gefunden) {
     return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml gefunden" };
   }
@@ -3299,7 +3306,7 @@ function pruefeMessbarkeit(text) {
   return { pruefung: "messbares Abnahmekriterium", zustand: "verletzt", details: "keine Zahl mit Einheit und kein Vergleichsoperator gefunden" };
 }
 function findeWortstamm(text, wort) {
-  return new RegExp(`\\b${wort.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\w*`, "i").test(text);
+  return new RegExp(`\\b${maskiere(wort)}\\w*`, "i").test(text);
 }
 function pruefeUnschaerfe(text, unschaerfe) {
   const verstoss = unschaerfe.find((w) => w.stufe === "verstoss" && findeWortstamm(text, w.wort));

@@ -5,13 +5,10 @@
  */
 import { URSACHEN } from "../gemeinsam/ursachen.generated";
 import { werteKennungenAus, type AuswertungsErgebnis } from "../gemeinsam/ursachenauswertung";
-
-function maskiereFuerRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+import { maskiere } from "../gemeinsam/regex";
 
 function istGesetzt(zeilen: string[], label: string): boolean {
-  const muster = new RegExp(`^-\\s*\\[(x|X)\\]\\s*${maskiereFuerRegex(label)}:`);
+  const muster = new RegExp(`^-\\s*\\[(x|X)\\]\\s*${maskiere(label)}:`);
   return zeilen.some((zeile) => muster.test(zeile));
 }
 

@@ -27382,12 +27382,14 @@ function werteKennungenAus(kennungen) {
   return { art: "rueckfrage", kandidaten: kennungen };
 }
 
-// src/action/ankreuzfelder.ts
-function maskiereFuerRegex(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// src/gemeinsam/regex.ts
+function maskiere(wort) {
+  return wort.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+// src/action/ankreuzfelder.ts
 function istGesetzt(zeilen, label) {
-  const muster = new RegExp(`^-\\s*\\[(x|X)\\]\\s*${maskiereFuerRegex(label)}:`);
+  const muster = new RegExp(`^-\\s*\\[(x|X)\\]\\s*${maskiere(label)}:`);
   return zeilen.some((zeile) => muster.test(zeile));
 }
 function leseGesetzteKennungen(kommentarBody) {
@@ -31060,10 +31062,12 @@ function normativerSatz(text) {
   const zeilen = text.split("\n").filter((zeile) => zeile.trim().startsWith(">"));
   return zeilen.length > 0 ? zeilen.join(" ") : text;
 }
+function zaehleWortTreffer(text, wort) {
+  return (text.match(new RegExp(`\\b${maskiere(wort)}\\b`, "gi")) ?? []).length;
+}
 function pruefeModalverb(text) {
   const satz = normativerSatz(text);
-  const treffer = MODALVERBEN.filter((wort) => new RegExp(`\\b${wort}\\b`, "i").test(satz));
-  const anzahl = treffer.reduce((summe, wort) => summe + (satz.match(new RegExp(`\\b${wort}\\b`, "gi")) ?? []).length, 0);
+  const anzahl = MODALVERBEN.reduce((summe, wort) => summe + zaehleWortTreffer(satz, wort), 0);
   if (anzahl === 0) {
     return { pruefung: "Modalverb", zustand: "verletzt", details: "kein Modalverb (muss, soll, kann) gefunden" };
   }
@@ -31073,7 +31077,7 @@ function pruefeModalverb(text) {
   return { pruefung: "Modalverb", zustand: "erfuellt" };
 }
 function pruefeAkteur(text, rollen) {
-  const gefunden = rollen.find((rolle) => new RegExp(`\\b${rolle}\\b`, "i").test(text));
+  const gefunden = rollen.find((rolle) => zaehleWortTreffer(text, rolle) > 0);
   if (!gefunden) {
     return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml gefunden" };
   }
@@ -31088,7 +31092,7 @@ function pruefeMessbarkeit(text) {
   return { pruefung: "messbares Abnahmekriterium", zustand: "verletzt", details: "keine Zahl mit Einheit und kein Vergleichsoperator gefunden" };
 }
 function findeWortstamm(text, wort) {
-  return new RegExp(`\\b${wort.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\w*`, "i").test(text);
+  return new RegExp(`\\b${maskiere(wort)}\\w*`, "i").test(text);
 }
 function pruefeUnschaerfe(text, unschaerfe) {
   const verstoss = unschaerfe.find((w) => w.stufe === "verstoss" && findeWortstamm(text, w.wort));
@@ -31220,15 +31224,16 @@ async function ermittleStufe2(client, ziel) {
   }
   return { pruefungenVerbindlich, vierAugenBelegt, keinSelbstMerge };
 }
+async function enthaeltDateien(client, ziel, pfad) {
+  try {
+    const { data } = await client.rest.repos.getContent({ owner: ziel.owner, repo: ziel.repo, path: pfad, ref: ziel.branch });
+    return Array.isArray(data) && data.length > 0;
+  } catch {
+    return false;
+  }
+}
 async function ermittleStufe3(client, ziel) {
-  const workflowVerzeichnis = await (async () => {
-    try {
-      const { data } = await client.rest.repos.getContent({ owner: ziel.owner, repo: ziel.repo, path: ".github/workflows", ref: ziel.branch });
-      return Array.isArray(data) && data.length > 0;
-    } catch {
-      return false;
-    }
-  })();
+  const workflowVerzeichnis = await enthaeltDateien(client, ziel, ".github/workflows");
   const [claudeMd, agentsMd, gate3Durchlaufen] = await Promise.all([
     existiertDatei(client, ziel, "CLAUDE.md"),
     existiertDatei(client, ziel, "AGENTS.md"),
@@ -31253,7 +31258,11 @@ var ATTESTA_YML = "attesta.yml";
 function arbeitsverzeichnis() {
   return process.env.GITHUB_WORKSPACE ?? process.cwd();
 }
-async function behandleGrundlauf(octokit, owner, repo, prNummer, branch, sha) {
+async function holePrKopf(octokit, owner, repo, prNummer) {
+  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  return { ablage: { owner, repo, branch: pr.head.ref }, sha: pr.head.sha };
+}
+function baueGrundlaufKommentar() {
   const teile = ["## Attesta Zyklus", "", "Anforderungspruefung noch nicht implementiert, siehe REQ-24 bis REQ-26.", "", "Ursachencode, ein Klick setzt genau ein Feld:", "", formatiereAnkreuzfelder()];
   const lizenzErgebnis = pruefeLizenz(core2.getInput("lizenzschluessel") || void 0);
   const lizenzHinweis = formatiereLizenzhinweis(lizenzErgebnis);
@@ -31262,7 +31271,19 @@ async function behandleGrundlauf(octokit, owner, repo, prNummer, branch, sha) {
   } else if (lizenzHinweis) {
     teile.push("", `_${lizenzHinweis}_`);
   }
-  const body = teile.join("\n");
+  return teile.join("\n");
+}
+async function baueReifeZeile(octokit, owner, repo, branch) {
+  try {
+    const bedingungen = await ermittleStufenBedingungen(octokit, { owner, repo, branch });
+    return `Delegationsreife: Stufe ${bestimmeDelegationsreife(bedingungen).stufe}.`;
+  } catch (e) {
+    core2.warning(`Delegationsreife nicht ermittelbar: ${e instanceof Error ? e.message : String(e)}`);
+    return "";
+  }
+}
+async function behandleGrundlauf(octokit, owner, repo, prNummer, branch, sha) {
+  const body = baueGrundlaufKommentar();
   try {
     await mitWiederholungBeiRatenbegrenzung(() => schreibeFestenKommentar(octokit, { owner, repo, pullNummer: prNummer }, body));
   } catch (e) {
@@ -31276,16 +31297,12 @@ async function behandleGrundlauf(octokit, owner, repo, prNummer, branch, sha) {
     notfallAktiv: offeneNotfaelle.length > 0,
     beobachtungsmodus: konfiguration.beobachtungsmodus
   });
-  let zusammenfassung = "Regelpruefung noch nicht implementiert, siehe REQ-24 bis REQ-26. Kein Befund ausgewiesen.";
-  if (offeneNotfaelle.length > 0) zusammenfassung += " Notfallpfad aktiv, siehe attesta/notfaelle/.";
-  if (konfiguration.beobachtungsmodus) zusammenfassung += " Beobachtungsmodus eingeschaltet.";
-  try {
-    const bedingungen = await ermittleStufenBedingungen(octokit, { owner, repo, branch });
-    const reife = bestimmeDelegationsreife(bedingungen);
-    zusammenfassung += ` Delegationsreife: Stufe ${reife.stufe}.`;
-  } catch (e) {
-    core2.warning(`Delegationsreife nicht ermittelbar: ${e instanceof Error ? e.message : String(e)}`);
-  }
+  const zusammenfassung = [
+    "Regelpruefung noch nicht implementiert, siehe REQ-24 bis REQ-26. Kein Befund ausgewiesen.",
+    offeneNotfaelle.length > 0 ? "Notfallpfad aktiv, siehe attesta/notfaelle/." : "",
+    konfiguration.beobachtungsmodus ? "Beobachtungsmodus eingeschaltet." : "",
+    await baueReifeZeile(octokit, owner, repo, branch)
+  ].filter(Boolean).join(" ");
   try {
     await mitWiederholungBeiRatenbegrenzung(
       () => erzeugeCheckRun(octokit, { owner, repo, sha }, { zustand, titel: "Attesta Zyklus", zusammenfassung })
@@ -31296,35 +31313,53 @@ async function behandleGrundlauf(octokit, owner, repo, prNummer, branch, sha) {
   }
 }
 async function behandleNotfallBefehl(octokit, owner, repo, prNummer, ausgerufenVon) {
-  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  const { ablage, sha } = await holePrKopf(octokit, owner, repo, prNummer);
   const notfall = erzeugeNotfall({ ausgerufenVon, ausgerufenAm: /* @__PURE__ */ new Date(), pullRequest: prNummer });
-  const pfad = await schreibeNotfall(octokit, { owner, repo, branch: pr.head.ref }, notfall);
+  const pfad = await schreibeNotfall(octokit, ablage, notfall);
   core2.info(`Notfall ausgerufen, abgelegt unter ${pfad}, Frist ${notfall.frist}`);
   await mitWiederholungBeiRatenbegrenzung(
-    () => erzeugeCheckRun(octokit, { owner, repo, sha: pr.head.sha }, {
+    () => erzeugeCheckRun(octokit, { owner, repo, sha }, {
       zustand: "neutral",
       titel: "Attesta Zyklus",
       zusammenfassung: `Notfallpfad ausgerufen von ${ausgerufenVon}. Nachdokumentation faellig bis ${notfall.frist}.`
     })
   );
 }
-async function verarbeiteUrsachenEintrag(octokit, owner, repo, prNummer, wert, gesetztVon) {
-  if (wert === "wollen") {
-    const berechtigt = await ermittleFreigaberecht(octokit, owner, repo, gesetztVon);
-    if (!berechtigt) {
-      core2.warning(`Ablehnung: "wollen" erfordert Freigaberecht (admin oder write). ${gesetztVon} hat es nicht.`);
-      return;
-    }
+async function darfFreigeben(octokit, owner, repo, person, vorgang) {
+  const berechtigt = await ermittleFreigaberecht(octokit, owner, repo, person);
+  if (!berechtigt) {
+    core2.warning(`Ablehnung: ${vorgang} erfordert Freigaberecht (admin oder write). ${person} hat es nicht.`);
   }
-  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  return berechtigt;
+}
+async function verarbeiteUrsachenEintrag(vorgang, wert) {
+  const { octokit, owner, repo, prNummer, gesetztVon } = vorgang;
+  if (wert === "wollen" && !await darfFreigeben(octokit, owner, repo, gesetztVon, '"wollen"')) {
+    return;
+  }
+  const { ablage } = await holePrKopf(octokit, owner, repo, prNummer);
   const ursache = erzeugeUrsachendatei({ vorgang: `pr-${prNummer}`, wert, zeitpunkt: /* @__PURE__ */ new Date(), gesetztVon });
-  const pfad = await schreibeUrsache(octokit, { owner, repo, branch: pr.head.ref }, ursache);
+  const pfad = await schreibeUrsache(octokit, ablage, ursache);
   core2.info(`Ursachencode ${wert} abgelegt unter ${pfad}, gesetzt von ${gesetztVon}`);
 }
+async function verarbeiteAuswertung(vorgang, ergebnis, herkunft) {
+  core2.info(`${herkunft}: ${JSON.stringify(ergebnis)}`);
+  switch (ergebnis.art) {
+    case "eintrag":
+      await verarbeiteUrsachenEintrag(vorgang, ergebnis.kennung);
+      return;
+    case "rueckfrage":
+      core2.warning(`Mehrere Ankreuzfelder gesetzt: ${ergebnis.kandidaten.join(", ")}. Kein Eintrag, Rueckfrage noetig.`);
+      return;
+    case "unbekannter_wert":
+      core2.warning(`Unbekannter Wert "${ergebnis.wert}". Zulaessig: ${ergebnis.zulaessig.join(", ")}.`);
+      return;
+    case "kein_eintrag":
+      return;
+  }
+}
 async function behandleGate3Befehl(octokit, owner, repo, prNummer, kommentarBody, bestaetigtVon) {
-  const berechtigt = await ermittleFreigaberecht(octokit, owner, repo, bestaetigtVon);
-  if (!berechtigt) {
-    core2.warning(`Ablehnung: Gate-3-Bestaetigung erfordert Freigaberecht (admin oder write). ${bestaetigtVon} hat es nicht.`);
+  if (!await darfFreigeben(octokit, owner, repo, bestaetigtVon, "Gate-3-Bestaetigung")) {
     return;
   }
   const begruendung = leseBegruendung(kommentarBody);
@@ -31332,9 +31367,9 @@ async function behandleGate3Befehl(octokit, owner, repo, prNummer, kommentarBody
     core2.warning("Gate-3-Bestaetigung ohne Begruendung. Aufruf: /attesta gate3 bestanden <Begruendung>");
     return;
   }
-  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  const { ablage } = await holePrKopf(octokit, owner, repo, prNummer);
   const attest = erzeugeGate3Attest({ bestaetigtVon, datum: /* @__PURE__ */ new Date(), begruendung });
-  await schreibeGate3Attest(octokit, { owner, repo, branch: pr.head.ref }, attest);
+  await schreibeGate3Attest(octokit, ablage, attest);
   core2.info(`Gate 3 bestaetigt von ${bestaetigtVon}, abgelegt unter ${GATE3_PFAD}`);
 }
 async function behandleKommentarEreignis(octokit, owner, repo) {
@@ -31345,34 +31380,28 @@ async function behandleKommentarEreignis(octokit, owner, repo) {
     return;
   }
   const absender = import_github2.context.payload.sender;
-  const gesetztVon = absender?.login ?? comment.user?.login ?? "unbekannt";
+  const vorgang = {
+    octokit,
+    owner,
+    repo,
+    prNummer: issue.number,
+    gesetztVon: absender?.login ?? comment.user?.login ?? "unbekannt"
+  };
   if (import_github2.context.payload.action === "edited") {
-    const ergebnis = werteAnkreuzfelderAus(comment.body);
-    core2.info(`Ankreuzfelder-Ergebnis: ${JSON.stringify(ergebnis)}`);
-    if (ergebnis.art === "rueckfrage") {
-      core2.warning(`Mehrere Ankreuzfelder gesetzt: ${ergebnis.kandidaten.join(", ")}. Kein Eintrag, Rueckfrage noetig.`);
-    } else if (ergebnis.art === "eintrag") {
-      await verarbeiteUrsachenEintrag(octokit, owner, repo, issue.number, ergebnis.kennung, gesetztVon);
-    }
+    await verarbeiteAuswertung(vorgang, werteAnkreuzfelderAus(comment.body), "Ankreuzfelder-Ergebnis");
     return;
   }
   if (import_github2.context.payload.action !== "created") return;
   if (istNotfallBefehl(comment.body)) {
-    await behandleNotfallBefehl(octokit, owner, repo, issue.number, gesetztVon);
+    await behandleNotfallBefehl(octokit, owner, repo, issue.number, vorgang.gesetztVon);
     return;
   }
   if (istGate3Befehl(comment.body)) {
-    await behandleGate3Befehl(octokit, owner, repo, issue.number, comment.body, gesetztVon);
+    await behandleGate3Befehl(octokit, owner, repo, issue.number, comment.body, vorgang.gesetztVon);
     return;
   }
   if (istUrsachenBefehl(comment.body)) {
-    const ergebnis = werteBefehlAus(comment.body);
-    core2.info(`Befehl-Ergebnis: ${JSON.stringify(ergebnis)}`);
-    if (ergebnis.art === "unbekannter_wert") {
-      core2.warning(`Unbekannter Wert "${ergebnis.wert}". Zulaessig: ${ergebnis.zulaessig.join(", ")}.`);
-    } else if (ergebnis.art === "eintrag") {
-      await verarbeiteUrsachenEintrag(octokit, owner, repo, issue.number, ergebnis.kennung, gesetztVon);
-    }
+    await verarbeiteAuswertung(vorgang, werteBefehlAus(comment.body), "Befehl-Ergebnis");
   }
 }
 async function behandleIssueEreignis(octokit, owner, repo) {

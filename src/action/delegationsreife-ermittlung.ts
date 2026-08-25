@@ -98,15 +98,18 @@ async function ermittleStufe2(client: ErmittlungsClient, ziel: ErmittlungsZiel):
   return { pruefungenVerbindlich, vierAugenBelegt, keinSelbstMerge };
 }
 
+/** Ein Verzeichnis zaehlt nur als vorhanden, wenn es mindestens eine Datei enthaelt. */
+async function enthaeltDateien(client: ErmittlungsClient, ziel: ErmittlungsZiel, pfad: string): Promise<boolean> {
+  try {
+    const { data } = await client.rest.repos.getContent({ owner: ziel.owner, repo: ziel.repo, path: pfad, ref: ziel.branch });
+    return Array.isArray(data) && data.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function ermittleStufe3(client: ErmittlungsClient, ziel: ErmittlungsZiel): Promise<StufenBedingungen["stufe3"]> {
-  const workflowVerzeichnis = await (async () => {
-    try {
-      const { data } = await client.rest.repos.getContent({ owner: ziel.owner, repo: ziel.repo, path: ".github/workflows", ref: ziel.branch });
-      return Array.isArray(data) && data.length > 0;
-    } catch {
-      return false;
-    }
-  })();
+  const workflowVerzeichnis = await enthaeltDateien(client, ziel, ".github/workflows");
   const [claudeMd, agentsMd, gate3Durchlaufen] = await Promise.all([
     existiertDatei(client, ziel, "CLAUDE.md"),
     existiertDatei(client, ziel, "AGENTS.md"),
