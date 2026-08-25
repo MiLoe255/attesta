@@ -132,7 +132,7 @@ export interface BasiswechselEintrag {
   neuePruefsumme: string;
 }
 
-export function listeBasiswechsel(profilVerzeichnis: string, lockPfad: string, neueBasis: ProfilBasis): BasiswechselEintrag[] {
+export function listeBasiswechsel(lockPfad: string, neueBasis: ProfilBasis): BasiswechselEintrag[] {
   const lock = ladeLock(lockPfad);
   return neueBasis.dateien.map((datei) => {
     const eintrag = lock[datei.dateiname];

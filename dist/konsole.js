@@ -2,7 +2,7 @@
 "use strict";
 
 // src/konsole/init.ts
-var import_node_fs = require("node:fs");
+var import_node_fs2 = require("node:fs");
 var import_node_crypto = require("node:crypto");
 var import_node_path = require("node:path");
 
@@ -3091,6 +3091,31 @@ var KonsoleFehler = class extends Error {
   }
 };
 
+// src/gemeinsam/profilvergleich.ts
+var import_node_fs = require("node:fs");
+function ladeLock(lockPfad) {
+  if (!(0, import_node_fs.existsSync)(lockPfad)) return {};
+  try {
+    return load((0, import_node_fs.readFileSync)(lockPfad, "utf-8")) ?? {};
+  } catch {
+    return {};
+  }
+}
+function listeBasiswechsel(lockPfad, neueBasis) {
+  const lock = ladeLock(lockPfad);
+  return neueBasis.dateien.map((datei) => {
+    const eintrag = lock[datei.dateiname];
+    return {
+      dateiname: datei.dateiname,
+      aendertSich: eintrag?.pruefsumme !== datei.pruefsumme,
+      alteBasisversion: eintrag?.basisversion,
+      neueBasisversion: neueBasis.basisversion,
+      altePruefsumme: eintrag?.pruefsumme,
+      neuePruefsumme: datei.pruefsumme
+    };
+  });
+}
+
 // src/konsole/init.ts
 function fuehreInitAus(zielVerzeichnis, optionen = {}) {
   const ueberschreiben = optionen.ueberschreiben ?? false;
@@ -3099,7 +3124,7 @@ function fuehreInitAus(zielVerzeichnis, optionen = {}) {
   const profilVerzeichnis = (0, import_node_path.join)(zielVerzeichnis, "attesta", "profil");
   const lockPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "profil.lock");
   if (!ueberschreiben) {
-    const vorhanden = basis.dateien.map((d) => (0, import_node_path.join)(profilVerzeichnis, d.dateiname)).filter((pfad) => (0, import_node_fs.existsSync)(pfad));
+    const vorhanden = basis.dateien.map((d) => (0, import_node_path.join)(profilVerzeichnis, d.dateiname)).filter((pfad) => (0, import_node_fs2.existsSync)(pfad));
     if (vorhanden.length > 0) {
       throw new KonsoleFehler(
         `Profil existiert bereits: ${vorhanden.join(", ")}. Mit --ueberschreiben erneut ausfuehren, um zu ersetzen.`,
@@ -3107,14 +3132,14 @@ function fuehreInitAus(zielVerzeichnis, optionen = {}) {
       );
     }
   }
-  (0, import_node_fs.mkdirSync)(profilVerzeichnis, { recursive: true });
+  (0, import_node_fs2.mkdirSync)(profilVerzeichnis, { recursive: true });
   const zeitpunkt = jetzt();
   const lock = {};
   const geschriebeneDateien = [];
   for (const datei of basis.dateien) {
     const inhalt = formatiereProfildatei(datei, basis.basisversion);
     const ziel = (0, import_node_path.join)(profilVerzeichnis, datei.dateiname);
-    (0, import_node_fs.writeFileSync)(ziel, inhalt, "utf-8");
+    (0, import_node_fs2.writeFileSync)(ziel, inhalt, "utf-8");
     geschriebeneDateien.push(ziel);
     lock[datei.dateiname] = {
       pruefsumme: datei.pruefsumme,
@@ -3122,12 +3147,27 @@ function fuehreInitAus(zielVerzeichnis, optionen = {}) {
       erzeugt_am: zeitpunkt
     };
   }
-  (0, import_node_fs.writeFileSync)(lockPfad, dump(lock, { lineWidth: -1, noRefs: true }), "utf-8");
+  (0, import_node_fs2.writeFileSync)(lockPfad, dump(lock, { lineWidth: -1, noRefs: true }), "utf-8");
   const betriebskennungPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "betriebskennung");
-  if (!(0, import_node_fs.existsSync)(betriebskennungPfad)) {
-    (0, import_node_fs.writeFileSync)(betriebskennungPfad, (0, import_node_crypto.randomUUID)(), "utf-8");
+  if (!(0, import_node_fs2.existsSync)(betriebskennungPfad)) {
+    (0, import_node_fs2.writeFileSync)(betriebskennungPfad, (0, import_node_crypto.randomUUID)(), "utf-8");
   }
   return { profilVerzeichnis, lockPfad, geschriebeneDateien };
+}
+function zeigeBasiswechsel(zielVerzeichnis) {
+  const lockPfad = (0, import_node_path.join)(zielVerzeichnis, "attesta", "profil.lock");
+  if (!(0, import_node_fs2.existsSync)(lockPfad)) return;
+  const aenderungen = listeBasiswechsel(lockPfad, (0, import_attesta_core.ladeProfilBasis)()).filter((eintrag) => eintrag.aendertSich);
+  if (aenderungen.length === 0) {
+    console.log("Basiswechsel: keine Abweichung, das Profil entspricht der installierten Basis.");
+    return;
+  }
+  console.log(`Basiswechsel: ${aenderungen.length} Abweichung(en) werden ueberschrieben.`);
+  for (const eintrag of aenderungen) {
+    console.log(`  ${eintrag.dateiname}`);
+    console.log(`    alt: Basis ${eintrag.alteBasisversion ?? "unbekannt"}, ${eintrag.altePruefsumme ?? "keine Pruefsumme"}`);
+    console.log(`    neu: Basis ${eintrag.neueBasisversion}, ${eintrag.neuePruefsumme}`);
+  }
 }
 var initBefehl = {
   name: "init",
@@ -3137,7 +3177,11 @@ var initBefehl = {
     console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock, attesta/betriebskennung");
   },
   fuehreAus(argv) {
-    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben: argv.includes("--ueberschreiben") });
+    const ueberschreiben = argv.includes("--ueberschreiben");
+    if (ueberschreiben) {
+      zeigeBasiswechsel(process.cwd());
+    }
+    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben });
     for (const datei of ergebnis.geschriebeneDateien) console.log(`geschrieben: ${datei}`);
     console.log(`geschrieben: ${ergebnis.lockPfad}`);
     return 0;
@@ -3159,7 +3203,7 @@ var pruefenBefehl = {
 };
 
 // src/konsole/guete.ts
-var import_node_fs2 = require("node:fs");
+var import_node_fs3 = require("node:fs");
 
 // src/gemeinsam/guete-regelsatz.generated.ts
 var GUETE_ROLLEN = [
@@ -3375,10 +3419,10 @@ var gueteBefehl = {
     if (!pfad) {
       throw new KonsoleFehler("Aufruf: attesta guete <Pfad>", 2);
     }
-    if (!(0, import_node_fs2.existsSync)(pfad)) {
+    if (!(0, import_node_fs3.existsSync)(pfad)) {
       throw new KonsoleFehler(`Pfad nicht gefunden: ${pfad}`, 2);
     }
-    const text = (0, import_node_fs2.readFileSync)(pfad, "utf-8");
+    const text = (0, import_node_fs3.readFileSync)(pfad, "utf-8");
     const ergebnis = pruefeAnforderungMitRegelsatz(text);
     let befundGefunden = false;
     for (const pruefung of ergebnis.pruefungen) {
@@ -3472,14 +3516,14 @@ function erzeugeKennzahlenDatensatz(params) {
 }
 
 // src/konsole/kennzahlen-lokal.ts
-var import_node_fs3 = require("node:fs");
+var import_node_fs4 = require("node:fs");
 var import_node_path2 = require("node:path");
 function leseYamlVerzeichnis(pfad) {
-  if (!(0, import_node_fs3.existsSync)(pfad)) return [];
+  if (!(0, import_node_fs4.existsSync)(pfad)) return [];
   const ergebnisse = [];
-  for (const datei of (0, import_node_fs3.readdirSync)(pfad)) {
+  for (const datei of (0, import_node_fs4.readdirSync)(pfad)) {
     if (!datei.endsWith(".yaml") && !datei.endsWith(".yml")) continue;
-    const geparst = load((0, import_node_fs3.readFileSync)((0, import_node_path2.join)(pfad, datei), "utf-8"));
+    const geparst = load((0, import_node_fs4.readFileSync)((0, import_node_path2.join)(pfad, datei), "utf-8"));
     if (geparst && typeof geparst === "object") ergebnisse.push(geparst);
   }
   return ergebnisse;
@@ -3492,10 +3536,10 @@ function liesNotfaelleLokal(wurzel) {
 }
 function liesBetriebskennung(wurzel) {
   const pfad = (0, import_node_path2.join)(wurzel, "attesta", "betriebskennung");
-  return (0, import_node_fs3.existsSync)(pfad) ? (0, import_node_fs3.readFileSync)(pfad, "utf-8").trim() || void 0 : void 0;
+  return (0, import_node_fs4.existsSync)(pfad) ? (0, import_node_fs4.readFileSync)(pfad, "utf-8").trim() || void 0 : void 0;
 }
 function ermittleStufenBedingungenLokal(wurzel) {
-  const existiert = (relativerPfad) => (0, import_node_fs3.existsSync)((0, import_node_path2.join)(wurzel, relativerPfad));
+  const existiert = (relativerPfad) => (0, import_node_fs4.existsSync)((0, import_node_path2.join)(wurzel, relativerPfad));
   return {
     stufe1: {
       profilVorhanden: existiert("attesta/profil.lock"),

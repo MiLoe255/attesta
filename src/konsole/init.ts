@@ -11,7 +11,7 @@ import { dump } from "js-yaml";
 import { ladeProfilBasis } from "../gemeinsam/regelsatz";
 import { formatiereProfildatei } from "../gemeinsam/profildatei";
 import { KonsoleFehler } from "../gemeinsam/fehler";
-import type { Lock } from "../gemeinsam/profilvergleich";
+import { listeBasiswechsel, type Lock } from "../gemeinsam/profilvergleich";
 import type { Befehl } from "./befehl";
 
 export interface InitErgebnis {
@@ -74,6 +74,31 @@ export function fuehreInitAus(zielVerzeichnis: string, optionen: InitOptionen = 
   return { profilVerzeichnis, lockPfad, geschriebeneDateien };
 }
 
+/**
+ * REQ-10 Abnahme 1: vor einem Basiswechsel je Abweichung Datei, alten und
+ * neuen Wert zeigen. Abnahme 2 ("ohne ausdrueckliche Bestaetigung schreibt
+ * die Konsole nichts") erfuellt bereits fuehreInitAus, das ohne
+ * --ueberschreiben abbricht. Nur die Auflistung wird gebaut, die
+ * Zusammenfuehrung wartet auf D3-17.
+ */
+function zeigeBasiswechsel(zielVerzeichnis: string): void {
+  const lockPfad = join(zielVerzeichnis, "attesta", "profil.lock");
+  if (!existsSync(lockPfad)) return;
+
+  const aenderungen = listeBasiswechsel(lockPfad, ladeProfilBasis()).filter((eintrag) => eintrag.aendertSich);
+  if (aenderungen.length === 0) {
+    console.log("Basiswechsel: keine Abweichung, das Profil entspricht der installierten Basis.");
+    return;
+  }
+
+  console.log(`Basiswechsel: ${aenderungen.length} Abweichung(en) werden ueberschrieben.`);
+  for (const eintrag of aenderungen) {
+    console.log(`  ${eintrag.dateiname}`);
+    console.log(`    alt: Basis ${eintrag.alteBasisversion ?? "unbekannt"}, ${eintrag.altePruefsumme ?? "keine Pruefsumme"}`);
+    console.log(`    neu: Basis ${eintrag.neueBasisversion}, ${eintrag.neuePruefsumme}`);
+  }
+}
+
 export const initBefehl: Befehl = {
   name: "init",
   hilfe(): void {
@@ -82,7 +107,11 @@ export const initBefehl: Befehl = {
     console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock, attesta/betriebskennung");
   },
   fuehreAus(argv: string[]): number {
-    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben: argv.includes("--ueberschreiben") });
+    const ueberschreiben = argv.includes("--ueberschreiben");
+    if (ueberschreiben) {
+      zeigeBasiswechsel(process.cwd());
+    }
+    const ergebnis = fuehreInitAus(process.cwd(), { ueberschreiben });
     for (const datei of ergebnis.geschriebeneDateien) console.log(`geschrieben: ${datei}`);
     console.log(`geschrieben: ${ergebnis.lockPfad}`);
     return 0;
