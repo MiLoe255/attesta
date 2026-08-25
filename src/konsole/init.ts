@@ -13,6 +13,7 @@ import { formatiereProfildatei } from "../gemeinsam/profildatei";
 import { KonsoleFehler } from "../gemeinsam/fehler";
 import { listeBasiswechsel, type Lock } from "../gemeinsam/profilvergleich";
 import { EIGENE_ROLLEN_PFAD, EIGENE_ROLLEN_VORLAGE } from "../gemeinsam/eigene-rollen";
+import { BEDIENUNG, VORLAGEN } from "../gemeinsam/vorlagen.generated";
 import type { Befehl } from "./befehl";
 
 export interface InitErgebnis {
@@ -72,6 +73,17 @@ export function fuehreInitAus(zielVerzeichnis: string, optionen: InitOptionen = 
     writeFileSync(betriebskennungPfad, randomUUID(), "utf-8");
   }
 
+  // Vorlagensatz und Bedienung, technisches Konzept A3. Vorhandene Dateien
+  // bleiben stehen: der Kunde darf die Vorlagen anpassen.
+  const vorlagenVerzeichnis = join(zielVerzeichnis, "docs", "vorlagen");
+  mkdirSync(vorlagenVerzeichnis, { recursive: true });
+  for (const vorlage of VORLAGEN) {
+    const ziel = join(vorlagenVerzeichnis, vorlage.name);
+    if (!existsSync(ziel)) writeFileSync(ziel, vorlage.inhalt, "utf-8");
+  }
+  const bedienungPfad = join(vorlagenVerzeichnis, "BEDIENUNG.md");
+  if (!existsSync(bedienungPfad)) writeFileSync(bedienungPfad, BEDIENUNG, "utf-8");
+
   // Betriebseigene Rollen: gehoert dem Kunden, wird nie ueberschrieben.
   const eigeneRollenPfad = join(zielVerzeichnis, ...EIGENE_ROLLEN_PFAD.split("/"));
   if (!existsSync(eigeneRollenPfad)) {
@@ -111,7 +123,9 @@ export const initBefehl: Befehl = {
   hilfe(): void {
     console.log("attesta init [--ueberschreiben]");
     console.log("  Eingabe:  aktuelles Arbeitsverzeichnis als Kundenrepository");
-    console.log("  Ausgabe:  attesta/profil/*.yaml (drei Dateien), attesta/profil.lock, attesta/betriebskennung, attesta/rollen-eigene.yaml");
+    console.log("  Ausgabe:  attesta/profil/ (drei Dateien), attesta/profil.lock,");
+    console.log("            attesta/betriebskennung, attesta/rollen-eigene.yaml,");
+    console.log("            docs/vorlagen/ (dreizehn Vorlagen plus BEDIENUNG.md)");
   },
   fuehreAus(argv: string[]): number {
     const ueberschreiben = argv.includes("--ueberschreiben");
