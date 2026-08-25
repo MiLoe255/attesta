@@ -31417,7 +31417,7 @@ async function behandleMonatsbericht(octokit, owner, repo) {
 async function fuehreAus() {
   const token = core2.getInput("github-token") || process.env.GITHUB_TOKEN;
   if (!token) {
-    throw new RechteFehler("contents: read (kein Token uebergeben)");
+    throw new RechteFehler("contents: write (kein Token uebergeben)");
   }
   const octokit = erzeugeOctokit(token);
   const { owner, repo } = import_github2.context.repo;
