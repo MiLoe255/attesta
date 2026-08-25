@@ -27421,7 +27421,7 @@ function werteBefehlAus(kommentarBody) {
 var RechteFehler = class extends Error {
   fehlendesRecht;
   constructor(fehlendesRecht) {
-    super(`Recht fehlt: ${fehlendesRecht}. Erforderlich: contents: read, issues: write, pull-requests: write, checks: write.`);
+    super(`Recht fehlt: ${fehlendesRecht}. Erforderlich: contents: write, issues: write, pull-requests: write, checks: write.`);
     this.name = "RechteFehler";
     this.fehlendesRecht = fehlendesRecht;
   }

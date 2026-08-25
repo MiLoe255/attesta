@@ -6,7 +6,7 @@ author: "PROSTRUCTIVE® Consulting & Management"
 
 inputs:
   github-token:
-    description: "Token mit contents: read, issues: write, pull-requests: write, checks: write."
+    description: "Token mit contents: write, issues: write, pull-requests: write, checks: write."
     required: true
   lizenzschluessel:
     description: "Signierter Lizenzschluessel. Optional, eine abgelaufene oder fehlende Lizenz haelt den Lauf nicht an (REQ-35)."
