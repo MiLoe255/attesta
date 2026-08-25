@@ -63,9 +63,19 @@ test("GR-8.4: eine Technologienennung fuehrt zu warnung, nie zu verletzt", () =>
   assert.notEqual(ergebnis.gesamt, "verletzt");
 });
 
-test("Pflichtfelder: K und S muessen beide vorkommen", () => {
+test("Pflichtfelder: die Kritikalitaet allein genuegt nicht", () => {
   assert.equal(findePruefung(pruefeAnforderung("Der Reviewer muss binnen 60 Sekunden pruefen. K2.", REGELSATZ), "Pflichtfelder gefuellt")?.zustand, "verletzt");
   assert.equal(findePruefung(pruefeAnforderung("Der Reviewer muss binnen 60 Sekunden pruefen. S2.", REGELSATZ), "Pflichtfelder gefuellt")?.zustand, "verletzt");
+});
+
+test("Dogfooding-Fund: im REQ-Dokument zaehlt die Prioritaet als zweite Einordnung", () => {
+  const text = "> Der Reviewer muss binnen 60 Sekunden pruefen.\n\n| Kritikalitaet | K2 |\n| Prioritaet | Muss |";
+  assert.equal(findePruefung(pruefeAnforderung(text, REGELSATZ), "Pflichtfelder gefuellt")?.zustand, "erfuellt");
+});
+
+test("im Arbeitspaket-Issue zaehlt weiterhin die Delegationsstufe", () => {
+  const text = "> Der Reviewer muss binnen 60 Sekunden pruefen. K2, S2.";
+  assert.equal(findePruefung(pruefeAnforderung(text, REGELSATZ), "Pflichtfelder gefuellt")?.zustand, "erfuellt");
 });
 
 test("das Gesamtergebnis ist der schlechteste Einzelbefund", () => {
