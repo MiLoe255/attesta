@@ -7,7 +7,7 @@ export class RechteFehler extends Error {
   readonly fehlendesRecht: string;
 
   constructor(fehlendesRecht: string) {
-    super(`Recht fehlt: ${fehlendesRecht}. Erforderlich: contents: read, issues: write, pull-requests: write, checks: write.`);
+    super(`Recht fehlt: ${fehlendesRecht}. Erforderlich: contents: write, issues: write, pull-requests: write, checks: write.`);
     this.name = "RechteFehler";
     this.fehlendesRecht = fehlendesRecht;
   }

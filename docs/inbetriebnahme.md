@@ -165,9 +165,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-**Beachte:** `contents: write` weicht von der Vorlage im Konfigurator ab, die
-`contents: read` schreibt. Mit `read` scheitert jedes Ablegen einer Datei. Der
-Hintergrund steht in Abschnitt 9, offener Punkt 1.
+**Zu `contents: write`:** Die Action legt Dateien in deinem Repository ab,
+deshalb genügt Lesezugriff hier nicht. Es bleiben vier Rechte, ein fünftes
+kommt nicht hinzu.
 
 Der Lizenzschlüssel ist an dieser Stelle bewusst weggelassen. Er ist optional,
 und ohne ihn läuft alles weiter, siehe Abschnitt 7.
@@ -330,14 +330,13 @@ Ehrlich benannt, damit du es nicht selbst suchen musst.
 
 | # | Offener Punkt | Auswirkung |
 |---|---|---|
-| 1 | **Die Konfigurator-Vorlage fordert `contents: read`** | Mit dieser Vorlage scheitert jedes Ablegen einer Datei. Nutze `contents: write` wie in Schritt 4. Ursache ist ein Widerspruch im Quellmaterial: REQ-16 legt `contents: read` fest, REQ-22, REQ-27 und REQ-37 verlangen Schreibzugriff |
-| 2 | **Die Regelprüfung im Pull Request fehlt** | Der Check-Run im Grundlauf steht immer auf `neutral`. Welche Dateien eines Pull Requests als Anforderungen zu prüfen sind, legt keine Anforderung fest |
-| 3 | **Ein Notfall lässt sich nicht schließen** | Das Feld `nachdokumentiert_am` wird ausgewertet, aber von keinem Befehl gesetzt. Bis dahin von Hand in die Datei eintragen |
-| 4 | **Nachweisgrad ist nie bestimmbar** | Kettendeckung und Belegfrische fehlen. Der Bericht sagt das offen, statt eine Zahl zu erfinden |
-| 5 | **Erstdurchlaufquote je Delegationsstufe ist immer null** | Keine Anforderung zeichnet eine Delegationsreife-Historie auf |
-| 6 | **Verzichte fehlen ganz** | `/attesta verzicht` steht im technischen Konzept, ist aber in keiner der 47 Anforderungen definiert |
-| 7 | **Kennzahlversand sendet nichts** | `attesta kennzahlen --probe` zeigt den Datensatz, der Versand selbst ist gesperrt, bis die Auftragsverarbeitung geklärt ist (D2-13) |
-| 8 | **Delegationsreife bleibt praktisch bei Stufe 1 oder 2** | Stufe 2 verlangt mindestens drei gemergte Pull Requests mit lückenloser Vier-Augen-Historie |
+| 1 | **Die Regelprüfung im Pull Request fehlt** | Der Check-Run im Grundlauf steht immer auf `neutral`. Welche Dateien eines Pull Requests als Anforderungen zu prüfen sind, legt keine Anforderung fest |
+| 2 | **Ein Notfall lässt sich nicht schließen** | Das Feld `nachdokumentiert_am` wird ausgewertet, aber von keinem Befehl gesetzt. Bis dahin von Hand in die Datei eintragen |
+| 3 | **Nachweisgrad ist nie bestimmbar** | Kettendeckung und Belegfrische fehlen. Der Bericht sagt das offen, statt eine Zahl zu erfinden |
+| 4 | **Erstdurchlaufquote je Delegationsstufe ist immer null** | Keine Anforderung zeichnet eine Delegationsreife-Historie auf |
+| 5 | **Verzichte fehlen ganz** | `/attesta verzicht` steht im technischen Konzept, ist aber in keiner der 47 Anforderungen definiert |
+| 6 | **Kennzahlversand sendet nichts** | `attesta kennzahlen --probe` zeigt den Datensatz, der Versand selbst ist gesperrt, bis die Auftragsverarbeitung geklärt ist (D2-13) |
+| 7 | **Delegationsreife bleibt praktisch bei Stufe 1 oder 2** | Stufe 2 verlangt mindestens drei gemergte Pull Requests mit lückenloser Vier-Augen-Historie |
 
 ---
 
