@@ -14,6 +14,14 @@ solches gekennzeichnet dabei.
 
 ## 0. Was du vorher wissen solltest
 
+### Wo der Regelsatz nachzulesen ist
+
+`docs/regelsatz/index.html` im Repository `attesta` zeigt den vollständigen
+Regelsatz als Text: Kritikalität, Delegation, K-mal-S-Matrix, Traceability,
+Phasen, Rollen, Unschärfewörter, Ursachencodes, Delegationsreife und
+Notfallpfad. Die Seite ist aus `rules/` erzeugt und kann davon nicht
+abweichen. Datei herunterladen und im Browser öffnen.
+
 ### Der Reifegrad in einem Satz
 
 Der Bausatz läuft im echten Betrieb und erzeugt Kommentare, Check-Runs,
@@ -27,7 +35,7 @@ steht deshalb im Grundlauf immer auf `neutral`.
 |---|---|---|
 | Marketplace-Eintrag | Der Workflow verweist auf `MiLoe255/attesta@main` statt auf eine Versionsmarke | D1-7, Wortmarke ist vor jeder Veröffentlichung anzumelden |
 | Veröffentlichung auf npm | `npx attesta init` funktioniert nicht. Der Weg über den Konfigurator ersetzt es, siehe Schritt 3 | `package.json` trägt `private: true` |
-| Dokumentationsseite | Der Konfigurator wird lokal geöffnet statt im Web aufgerufen, siehe Schritt 3 | D4-21, GitHub Pages ist für `attesta` nicht eingeschaltet |
+| Veröffentlichte Webseiten | Konfigurator und Regelsatzseite werden lokal geöffnet statt im Web aufgerufen. Beide liegen als HTML im Repository unter `docs/` | GitHub Pages ist für `attesta` nicht eingeschaltet |
 
 ### Was der Bausatz an deinem Repository verändert
 
