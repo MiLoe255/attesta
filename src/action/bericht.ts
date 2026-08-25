@@ -13,6 +13,7 @@
 import { URSACHEN } from "../gemeinsam/ursachen.generated";
 import { bestimmeZustand, zaehleJeQuartal, type Notfall } from "./notfall";
 import { berechneUebernahmequote, type Ursachendatei } from "./ursachendatei";
+import { NOTFALL_REGELN } from "../gemeinsam/notfall.generated";
 import type { ProfilBefund } from "../gemeinsam/profilvergleich";
 
 export interface BerichtDaten {
@@ -80,7 +81,8 @@ function zeileQuartalszaehler(notfaelle: Notfall[], jetzt: Date): string {
   const jahr = jetzt.getUTCFullYear();
   const quartal = (Math.floor(jetzt.getUTCMonth() / 3) + 1) as 1 | 2 | 3 | 4;
   const anzahl = zaehleJeQuartal(notfaelle, jahr, quartal);
-  const nachsatz = anzahl >= 3 ? " Ab dem dritten Notfall im Quartal ist es kein Notfall mehr." : "";
+  const schwelle = NOTFALL_REGELN.schwelle_je_quartal;
+  const nachsatz = anzahl >= schwelle ? ` Ab dem ${schwelle}. Notfall im Quartal ist es kein Notfall mehr.` : "";
   return `Notfaelle im laufenden Quartal (Q${quartal} ${jahr}): ${anzahl}.${nachsatz}`;
 }
 

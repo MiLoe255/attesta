@@ -91,7 +91,7 @@ test("REQ-22: ab dem dritten Notfall im Quartal nennt der Bericht die Schwelle",
     erzeugeNotfall({ ausgerufenVon: `dev${n}`, ausgerufenAm: new Date("2026-08-01T00:00:00.000Z"), pullRequest: n })
   );
   const inhalt = erzeugeBerichtsinhalt({ ...LEER, notfaelle });
-  assert.match(inhalt, /Q3 2026\): 3\. Ab dem dritten Notfall im Quartal ist es kein Notfall mehr\./);
+  assert.match(inhalt, /Q3 2026\): 3\. Ab dem 3\. Notfall im Quartal ist es kein Notfall mehr\./);
 });
 
 test("der Quartalszaehler erscheint auch, wenn kein Notfall offen ist", () => {

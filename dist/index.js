@@ -26956,6 +26956,7 @@ var require_regelsatz = __commonJS({
     exports2.ladeUrsachen = ladeUrsachen;
     exports2.ladeTechnologien = ladeTechnologien2;
     exports2.ladeDelegationsreife = ladeDelegationsreife2;
+    exports2.ladeNotfall = ladeNotfall2;
     var node_fs_1 = require("node:fs");
     var node_path_1 = require("node:path");
     var js_yaml_1 = require_js_yaml();
@@ -27148,6 +27149,26 @@ var require_regelsatz = __commonJS({
         quelle: (0, fehler_1.pruefePflichtfeld)(daten.quelle, "delegationsreife.yaml", "quelle"),
         stufen,
         historie
+      };
+    }
+    function ladeNotfall2() {
+      const daten = ladeYaml("notfall.yaml");
+      const frist = (0, fehler_1.pruefePflichtfeld)(daten.frist, "notfall.yaml", "frist");
+      if (typeof frist.arbeitstage !== "number" || frist.arbeitstage < 1) {
+        throw new fehler_1.RegelsatzFehler("notfall.yaml", "frist.arbeitstage", "muss eine Zahl ab eins sein");
+      }
+      const schwelle = (0, fehler_1.pruefePflichtfeld)(daten.schwelle_je_quartal, "notfall.yaml", "schwelle_je_quartal");
+      if (typeof schwelle !== "number" || schwelle < 1) {
+        throw new fehler_1.RegelsatzFehler("notfall.yaml", "schwelle_je_quartal", "muss eine Zahl ab eins sein");
+      }
+      return {
+        version: (0, fehler_1.pruefePflichtfeld)(daten.version, "notfall.yaml", "version"),
+        quelle: (0, fehler_1.pruefePflichtfeld)(daten.quelle, "notfall.yaml", "quelle"),
+        befehl: (0, fehler_1.pruefePflichtfeld)(daten.befehl, "notfall.yaml", "befehl"),
+        check_run_zustand: (0, fehler_1.pruefePflichtfeld)(daten.check_run_zustand, "notfall.yaml", "check_run_zustand"),
+        frist,
+        schwelle_je_quartal: schwelle,
+        zustaende: (0, fehler_1.pruefePflichtfeld)(daten.zustaende, "notfall.yaml", "zustaende")
       };
     }
   }
@@ -30568,12 +30589,22 @@ function ladeKonfiguration(pfad) {
   };
 }
 
+// src/gemeinsam/notfall.generated.ts
+var NOTFALL_REGELN = {
+  "befehl": "/attesta notfall",
+  "frist": {
+    "arbeitstage": 3,
+    "wochenende_zaehlt": false
+  },
+  "schwelle_je_quartal": 3
+};
+
 // src/action/notfall.ts
 var NOTFALL_BEFEHL = /^\/attesta\s+notfall\b/i;
 function istNotfallBefehl(kommentarBody) {
   return NOTFALL_BEFEHL.test(kommentarBody.trim());
 }
-function berechneFrist(ausgerufenAm, arbeitstage = 3) {
+function berechneFrist(ausgerufenAm, arbeitstage = NOTFALL_REGELN.frist.arbeitstage) {
   const ergebnis = new Date(ausgerufenAm);
   let hinzugefuegt = 0;
   while (hinzugefuegt < arbeitstage) {
@@ -30813,7 +30844,8 @@ function zeileQuartalszaehler(notfaelle, jetzt) {
   const jahr = jetzt.getUTCFullYear();
   const quartal = Math.floor(jetzt.getUTCMonth() / 3) + 1;
   const anzahl = zaehleJeQuartal(notfaelle, jahr, quartal);
-  const nachsatz = anzahl >= 3 ? " Ab dem dritten Notfall im Quartal ist es kein Notfall mehr." : "";
+  const schwelle = NOTFALL_REGELN.schwelle_je_quartal;
+  const nachsatz = anzahl >= schwelle ? ` Ab dem ${schwelle}. Notfall im Quartal ist es kein Notfall mehr.` : "";
   return `Notfaelle im laufenden Quartal (Q${quartal} ${jahr}): ${anzahl}.${nachsatz}`;
 }
 function abschnittNotfaelle(notfaelle, jetzt) {

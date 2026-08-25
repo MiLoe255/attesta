@@ -5,7 +5,9 @@
  * bereits gelesene Notfall-Datensaetze; das Einsammeln der Dateien selbst
  * gehoert dem Monatsbericht (Arbeitspaket 14).
  */
-export const NOTFALL_BEFEHL = /^\/attesta\s+notfall\b/i;
+import { NOTFALL_REGELN } from "../gemeinsam/notfall.generated";
+
+const NOTFALL_BEFEHL = /^\/attesta\s+notfall\b/i;
 
 export function istNotfallBefehl(kommentarBody: string): boolean {
   return NOTFALL_BEFEHL.test(kommentarBody.trim());
@@ -22,8 +24,8 @@ export interface Notfall {
   nachdokumentiert_am?: string;
 }
 
-/** Drei Arbeitstage ab dem Ausrufen, Samstag und Sonntag zaehlen nicht. Feiertage sind nicht beruecksichtigt. */
-export function berechneFrist(ausgerufenAm: Date, arbeitstage = 3): Date {
+/** Frist ab dem Ausrufen nach rules/notfall.yaml. Samstag und Sonntag zaehlen nicht, Feiertage sind nicht beruecksichtigt. */
+export function berechneFrist(ausgerufenAm: Date, arbeitstage: number = NOTFALL_REGELN.frist.arbeitstage): Date {
   const ergebnis = new Date(ausgerufenAm);
   let hinzugefuegt = 0;
   while (hinzugefuegt < arbeitstage) {

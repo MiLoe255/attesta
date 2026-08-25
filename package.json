@@ -8,7 +8,7 @@
     "attesta": "dist/konsole.js"
   },
   "scripts": {
-    "generate": "tsx scripts/generate-ursachen.ts && tsx scripts/generate-guete-regelsatz.ts && tsx scripts/generate-profilbasis.ts && tsx scripts/generate-ksmatrix.ts && tsx scripts/generate-delegationsreife.ts && tsx scripts/generate-konfigurator.ts",
+    "generate": "tsx scripts/generate-ursachen.ts && tsx scripts/generate-guete-regelsatz.ts && tsx scripts/generate-profilbasis.ts && tsx scripts/generate-ksmatrix.ts && tsx scripts/generate-delegationsreife.ts && tsx scripts/generate-notfall.ts && tsx scripts/generate-konfigurator.ts",
     "build": "npm run generate && tsc -p . && node scripts/bundle.mjs",
     "test": "tsx --test test/*.test.ts",
     "release": "node scripts/release.mjs"
