@@ -28,7 +28,7 @@ import { erzeugeOctokit, type Octokit } from "./github";
 import { schreibeFestenKommentar } from "./kommentar";
 import { erzeugeCheckRun, type CheckZustand } from "./checkrun";
 import { formatiereAnkreuzfelder, werteAnkreuzfelderAus } from "./ankreuzfelder";
-import { istUrsachenBefehl, werteBefehlAus } from "./befehle";
+import { istUrsachenBefehl, werteBefehlAus, type BefehlErgebnis } from "./befehle";
 import { RechteFehler, ZeitgrenzeFehler, mitWiederholungBeiRatenbegrenzung, mitZeitgrenze, pruefeAufRechtefehler } from "./fehlerbehandlung";
 import { ladeKonfiguration } from "./konfiguration";
 import { erzeugeNotfall, istNotfallBefehl } from "./notfall";
@@ -56,11 +56,26 @@ function arbeitsverzeichnis(): string {
   return process.env.GITHUB_WORKSPACE ?? process.cwd();
 }
 
-async function behandleGrundlauf(octokit: Octokit, owner: string, repo: string, prNummer: number, branch: string, sha: string): Promise<void> {
+/**
+ * Kopf des Pull Requests: der Zweig, auf dem die Action Dateien ablegt,
+ * und der Commit, an dem der Check-Run haengt. Die Ablage erfolgt immer
+ * auf diesem Zweig und niemals direkt auf dem Hauptzweig (Leitfaden
+ * Abschnitt 8, hartes Verbot).
+ */
+async function holePrKopf(octokit: Octokit, owner: string, repo: string, prNummer: number): Promise<{ ablage: { owner: string; repo: string; branch: string }; sha: string }> {
+  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  return { ablage: { owner, repo, branch: pr.head.ref }, sha: pr.head.sha };
+}
+
+/**
+ * Der feste Kommentar am Pull Request. REQ-35: eine abgelaufene,
+ * ungueltige oder fehlende Lizenz haelt den Lauf nicht an (GR-11.4), sie
+ * erzeugt nur einen Hinweis. Nach dreissig Tagen wandert er an den Kopf
+ * des Kommentars (GR-11.5).
+ */
+function baueGrundlaufKommentar(): string {
   const teile = ["## Attesta Zyklus", "", "Anforderungspruefung noch nicht implementiert, siehe REQ-24 bis REQ-26.", "", "Ursachencode, ein Klick setzt genau ein Feld:", "", formatiereAnkreuzfelder()];
 
-  // REQ-35: eine abgelaufene, ungueltige oder fehlende Lizenz haelt den Lauf nicht an (GR-11.4),
-  // nur ein Hinweis, der nach dreissig Tagen an den Kopf des Kommentars wandert (GR-11.5).
   const lizenzErgebnis = pruefeLizenz(core.getInput("lizenzschluessel") || undefined);
   const lizenzHinweis = formatiereLizenzhinweis(lizenzErgebnis);
   if (lizenzHinweis && istHinweisDringend(lizenzErgebnis)) {
@@ -68,8 +83,27 @@ async function behandleGrundlauf(octokit: Octokit, owner: string, repo: string, 
   } else if (lizenzHinweis) {
     teile.push("", `_${lizenzHinweis}_`);
   }
-  const body = teile.join("\n");
+  return teile.join("\n");
+}
 
+/**
+ * REQ-32 Abnahme 3: die Delegationsreife erscheint als Zeile im
+ * Check-Run. Sie ist eine Zusatzangabe: laesst sie sich nicht ermitteln,
+ * bleibt die Zeile leer und der Lauf geht weiter.
+ */
+async function baueReifeZeile(octokit: Octokit, owner: string, repo: string, branch: string): Promise<string> {
+  try {
+    const bedingungen = await ermittleStufenBedingungen(octokit, { owner, repo, branch });
+    return `Delegationsreife: Stufe ${bestimmeDelegationsreife(bedingungen).stufe}.`;
+  } catch (e) {
+    core.warning(`Delegationsreife nicht ermittelbar: ${e instanceof Error ? e.message : String(e)}`);
+    return "";
+  }
+}
+
+async function behandleGrundlauf(octokit: Octokit, owner: string, repo: string, prNummer: number, branch: string, sha: string): Promise<void> {
+  // Einmal bauen, nicht je Wiederholungsversuch erneut.
+  const body = baueGrundlaufKommentar();
   try {
     await mitWiederholungBeiRatenbegrenzung(() => schreibeFestenKommentar(octokit, { owner, repo, pullNummer: prNummer }, body));
   } catch (e) {
@@ -85,18 +119,14 @@ async function behandleGrundlauf(octokit: Octokit, owner: string, repo: string, 
     beobachtungsmodus: konfiguration.beobachtungsmodus,
   });
 
-  let zusammenfassung = "Regelpruefung noch nicht implementiert, siehe REQ-24 bis REQ-26. Kein Befund ausgewiesen.";
-  if (offeneNotfaelle.length > 0) zusammenfassung += " Notfallpfad aktiv, siehe attesta/notfaelle/.";
-  if (konfiguration.beobachtungsmodus) zusammenfassung += " Beobachtungsmodus eingeschaltet.";
-
-  // REQ-32 Abnahme 3: die Delegationsreife erscheint als Zeile im Check-Run.
-  try {
-    const bedingungen = await ermittleStufenBedingungen(octokit, { owner, repo, branch });
-    const reife = bestimmeDelegationsreife(bedingungen);
-    zusammenfassung += ` Delegationsreife: Stufe ${reife.stufe}.`;
-  } catch (e) {
-    core.warning(`Delegationsreife nicht ermittelbar: ${e instanceof Error ? e.message : String(e)}`);
-  }
+  const zusammenfassung = [
+    "Regelpruefung noch nicht implementiert, siehe REQ-24 bis REQ-26. Kein Befund ausgewiesen.",
+    offeneNotfaelle.length > 0 ? "Notfallpfad aktiv, siehe attesta/notfaelle/." : "",
+    konfiguration.beobachtungsmodus ? "Beobachtungsmodus eingeschaltet." : "",
+    await baueReifeZeile(octokit, owner, repo, branch),
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   try {
     await mitWiederholungBeiRatenbegrenzung(() =>
@@ -109,13 +139,13 @@ async function behandleGrundlauf(octokit: Octokit, owner: string, repo: string, 
 }
 
 async function behandleNotfallBefehl(octokit: Octokit, owner: string, repo: string, prNummer: number, ausgerufenVon: string): Promise<void> {
-  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  const { ablage, sha } = await holePrKopf(octokit, owner, repo, prNummer);
   const notfall = erzeugeNotfall({ ausgerufenVon, ausgerufenAm: new Date(), pullRequest: prNummer });
-  const pfad = await schreibeNotfall(octokit, { owner, repo, branch: pr.head.ref }, notfall);
+  const pfad = await schreibeNotfall(octokit, ablage, notfall);
   core.info(`Notfall ausgerufen, abgelegt unter ${pfad}, Frist ${notfall.frist}`);
 
   await mitWiederholungBeiRatenbegrenzung(() =>
-    erzeugeCheckRun(octokit, { owner, repo, sha: pr.head.sha }, {
+    erzeugeCheckRun(octokit, { owner, repo, sha }, {
       zustand: "neutral",
       titel: "Attesta Zyklus",
       zusammenfassung: `Notfallpfad ausgerufen von ${ausgerufenVon}. Nachdokumentation faellig bis ${notfall.frist}.`,
@@ -124,23 +154,65 @@ async function behandleNotfallBefehl(octokit: Octokit, owner: string, repo: stri
 }
 
 /**
+ * Freigaberecht als Vorbedingung, mit einheitlicher Ablehnungsmeldung.
+ * Zwei Vorgaenge brauchen sie: der Ursachenwert "wollen" (REQ-31) und die
+ * Gate-3-Bestaetigung. Beide sind Aussagen ueber einen benannten Menschen.
+ */
+async function darfFreigeben(octokit: Octokit, owner: string, repo: string, person: string, vorgang: string): Promise<boolean> {
+  const berechtigt = await ermittleFreigaberecht(octokit, owner, repo, person);
+  if (!berechtigt) {
+    core.warning(`Ablehnung: ${vorgang} erfordert Freigaberecht (admin oder write). ${person} hat es nicht.`);
+  }
+  return berechtigt;
+}
+
+/** Wer an welchem Pull Request etwas setzt. Buendelt die Angaben, die jeder Bedienvorgang am Kommentar braucht. */
+interface Vorgang {
+  octokit: Octokit;
+  owner: string;
+  repo: string;
+  prNummer: number;
+  gesetztVon: string;
+}
+
+/**
  * REQ-27, REQ-31: legt die Ursachendatei ab. Bei "wollen" erst nach
  * bestaetigtem Freigaberecht der setzenden Person, sonst Ablehnung mit
  * Nennung der noetigen Rolle (Fehlerverhalten aus SPEC-09).
  */
-async function verarbeiteUrsachenEintrag(octokit: Octokit, owner: string, repo: string, prNummer: number, wert: UrsachenKennung, gesetztVon: string): Promise<void> {
-  if (wert === "wollen") {
-    const berechtigt = await ermittleFreigaberecht(octokit, owner, repo, gesetztVon);
-    if (!berechtigt) {
-      core.warning(`Ablehnung: "wollen" erfordert Freigaberecht (admin oder write). ${gesetztVon} hat es nicht.`);
-      return;
-    }
+async function verarbeiteUrsachenEintrag(vorgang: Vorgang, wert: UrsachenKennung): Promise<void> {
+  const { octokit, owner, repo, prNummer, gesetztVon } = vorgang;
+  if (wert === "wollen" && !(await darfFreigeben(octokit, owner, repo, gesetztVon, '"wollen"'))) {
+    return;
   }
 
-  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  const { ablage } = await holePrKopf(octokit, owner, repo, prNummer);
   const ursache = erzeugeUrsachendatei({ vorgang: `pr-${prNummer}`, wert, zeitpunkt: new Date(), gesetztVon });
-  const pfad = await schreibeUrsache(octokit, { owner, repo, branch: pr.head.ref }, ursache);
+  const pfad = await schreibeUrsache(octokit, ablage, ursache);
   core.info(`Ursachencode ${wert} abgelegt unter ${pfad}, gesetzt von ${gesetztVon}`);
+}
+
+/**
+ * Verarbeitet ein Auswerteergebnis, gleich ob es aus einem Ankreuzfeld
+ * oder aus einem getippten Befehl stammt. GR-7.3 verlangt, dass beide
+ * Wege denselben Auswerteschritt nutzen und dasselbe Ergebnis liefern;
+ * das gilt hier auch fuer die Reaktion darauf.
+ */
+async function verarbeiteAuswertung(vorgang: Vorgang, ergebnis: BefehlErgebnis, herkunft: string): Promise<void> {
+  core.info(`${herkunft}: ${JSON.stringify(ergebnis)}`);
+  switch (ergebnis.art) {
+    case "eintrag":
+      await verarbeiteUrsachenEintrag(vorgang, ergebnis.kennung as UrsachenKennung);
+      return;
+    case "rueckfrage":
+      core.warning(`Mehrere Ankreuzfelder gesetzt: ${ergebnis.kandidaten.join(", ")}. Kein Eintrag, Rueckfrage noetig.`);
+      return;
+    case "unbekannter_wert":
+      core.warning(`Unbekannter Wert "${ergebnis.wert}". Zulaessig: ${ergebnis.zulaessig.join(", ")}.`);
+      return;
+    case "kein_eintrag":
+      return;
+  }
 }
 
 /**
@@ -150,19 +222,17 @@ async function verarbeiteUrsachenEintrag(octokit: Octokit, owner: string, repo: 
  * fehlende Feld benannt statt den Befehl schweigend zu verwerfen.
  */
 async function behandleGate3Befehl(octokit: Octokit, owner: string, repo: string, prNummer: number, kommentarBody: string, bestaetigtVon: string): Promise<void> {
-  const berechtigt = await ermittleFreigaberecht(octokit, owner, repo, bestaetigtVon);
-  if (!berechtigt) {
-    core.warning(`Ablehnung: Gate-3-Bestaetigung erfordert Freigaberecht (admin oder write). ${bestaetigtVon} hat es nicht.`);
+  if (!(await darfFreigeben(octokit, owner, repo, bestaetigtVon, "Gate-3-Bestaetigung"))) {
     return;
   }
   const begruendung = leseBegruendung(kommentarBody);
   if (!begruendung) {
-    core.warning('Gate-3-Bestaetigung ohne Begruendung. Aufruf: /attesta gate3 bestanden <Begruendung>');
+    core.warning("Gate-3-Bestaetigung ohne Begruendung. Aufruf: /attesta gate3 bestanden <Begruendung>");
     return;
   }
-  const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: prNummer });
+  const { ablage } = await holePrKopf(octokit, owner, repo, prNummer);
   const attest = erzeugeGate3Attest({ bestaetigtVon, datum: new Date(), begruendung });
-  await schreibeGate3Attest(octokit, { owner, repo, branch: pr.head.ref }, attest);
+  await schreibeGate3Attest(octokit, ablage, attest);
   core.info(`Gate 3 bestaetigt von ${bestaetigtVon}, abgelegt unter ${GATE3_PFAD}`);
 }
 
@@ -174,39 +244,33 @@ async function behandleKommentarEreignis(octokit: Octokit, owner: string, repo: 
     return;
   }
   const absender = context.payload.sender as { login?: string } | undefined;
-  const gesetztVon = absender?.login ?? comment.user?.login ?? "unbekannt";
+  const vorgang: Vorgang = {
+    octokit,
+    owner,
+    repo,
+    prNummer: issue.number,
+    gesetztVon: absender?.login ?? comment.user?.login ?? "unbekannt",
+  };
 
   if (context.payload.action === "edited") {
-    const ergebnis = werteAnkreuzfelderAus(comment.body);
-    core.info(`Ankreuzfelder-Ergebnis: ${JSON.stringify(ergebnis)}`);
-    if (ergebnis.art === "rueckfrage") {
-      core.warning(`Mehrere Ankreuzfelder gesetzt: ${ergebnis.kandidaten.join(", ")}. Kein Eintrag, Rueckfrage noetig.`);
-    } else if (ergebnis.art === "eintrag") {
-      await verarbeiteUrsachenEintrag(octokit, owner, repo, issue.number, ergebnis.kennung as UrsachenKennung, gesetztVon);
-    }
+    await verarbeiteAuswertung(vorgang, werteAnkreuzfelderAus(comment.body), "Ankreuzfelder-Ergebnis");
     return;
   }
 
   if (context.payload.action !== "created") return;
 
   if (istNotfallBefehl(comment.body)) {
-    await behandleNotfallBefehl(octokit, owner, repo, issue.number, gesetztVon);
+    await behandleNotfallBefehl(octokit, owner, repo, issue.number, vorgang.gesetztVon);
     return;
   }
 
   if (istGate3Befehl(comment.body)) {
-    await behandleGate3Befehl(octokit, owner, repo, issue.number, comment.body, gesetztVon);
+    await behandleGate3Befehl(octokit, owner, repo, issue.number, comment.body, vorgang.gesetztVon);
     return;
   }
 
   if (istUrsachenBefehl(comment.body)) {
-    const ergebnis = werteBefehlAus(comment.body);
-    core.info(`Befehl-Ergebnis: ${JSON.stringify(ergebnis)}`);
-    if (ergebnis.art === "unbekannter_wert") {
-      core.warning(`Unbekannter Wert "${ergebnis.wert}". Zulaessig: ${ergebnis.zulaessig.join(", ")}.`);
-    } else if (ergebnis.art === "eintrag") {
-      await verarbeiteUrsachenEintrag(octokit, owner, repo, issue.number, ergebnis.kennung as UrsachenKennung, gesetztVon);
-    }
+    await verarbeiteAuswertung(vorgang, werteBefehlAus(comment.body), "Befehl-Ergebnis");
   }
 }
 

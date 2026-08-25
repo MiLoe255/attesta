@@ -30,6 +30,7 @@
  */
 import type { UnschaerfeWort } from "./regelsatz";
 import { GUETE_ROLLEN, GUETE_TECHNOLOGIEN, GUETE_UNSCHAERFE } from "./guete-regelsatz.generated";
+import { maskiere } from "./regex";
 
 export type PruefungsZustand = "erfuellt" | "warnung" | "verletzt";
 
@@ -65,10 +66,13 @@ function normativerSatz(text: string): string {
   return zeilen.length > 0 ? zeilen.join(" ") : text;
 }
 
+function zaehleWortTreffer(text: string, wort: string): number {
+  return (text.match(new RegExp(`\\b${maskiere(wort)}\\b`, "gi")) ?? []).length;
+}
+
 function pruefeModalverb(text: string): PruefungsBefund {
   const satz = normativerSatz(text);
-  const treffer = MODALVERBEN.filter((wort) => new RegExp(`\\b${wort}\\b`, "i").test(satz));
-  const anzahl = treffer.reduce((summe, wort) => summe + (satz.match(new RegExp(`\\b${wort}\\b`, "gi")) ?? []).length, 0);
+  const anzahl = MODALVERBEN.reduce((summe, wort) => summe + zaehleWortTreffer(satz, wort), 0);
   if (anzahl === 0) {
     return { pruefung: "Modalverb", zustand: "verletzt", details: "kein Modalverb (muss, soll, kann) gefunden" };
   }
@@ -79,7 +83,7 @@ function pruefeModalverb(text: string): PruefungsBefund {
 }
 
 function pruefeAkteur(text: string, rollen: string[]): PruefungsBefund {
-  const gefunden = rollen.find((rolle) => new RegExp(`\\b${rolle}\\b`, "i").test(text));
+  const gefunden = rollen.find((rolle) => zaehleWortTreffer(text, rolle) > 0);
   if (!gefunden) {
     return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml gefunden" };
   }
@@ -96,8 +100,9 @@ function pruefeMessbarkeit(text: string): PruefungsBefund {
   return { pruefung: "messbares Abnahmekriterium", zustand: "verletzt", details: "keine Zahl mit Einheit und kein Vergleichsoperator gefunden" };
 }
 
+/** Wie zaehleWortTreffer, aber der Wortstamm genuegt: "schnell" trifft auch "schnelle". */
 function findeWortstamm(text: string, wort: string): boolean {
-  return new RegExp(`\\b${wort.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\w*`, "i").test(text);
+  return new RegExp(`\\b${maskiere(wort)}\\w*`, "i").test(text);
 }
 
 function pruefeUnschaerfe(text: string, unschaerfe: UnschaerfeWort[]): PruefungsBefund {
