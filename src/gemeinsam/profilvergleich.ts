@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { load } from "js-yaml";
 import { pruefsumme, type ProfilBasis, type ProfilBasisDatei } from "./regelsatz";
+import { formatiereProfildatei } from "./profildatei";
 
 export type ProfilZustand = "deckungsgleich" | "abgewichen" | "unbekannter_wert" | "basis_veraltet" | "unlesbar";
 
@@ -88,7 +89,12 @@ export function vergleicheDatei(params: {
     };
   }
 
-  if (pruefsumme(profilInhalt) === basisDatei.pruefsumme) {
+  // Verglichen wird gegen die Sperrdatei, also gegen den Stand, den die
+  // Konsole geschrieben hat. Der Vergleich gegen den blossen Basisrumpf
+  // wuerde nie treffen, weil die ausgelieferte Datei eine Kopfzeile traegt
+  // (im Live-Test am 25.08.2026 gefunden: ein frisches Profil meldete
+  // sofort "abgewichen").
+  if (pruefsumme(profilInhalt) === lockEintrag.pruefsumme) {
     return { dateiname, zustand: "deckungsgleich" };
   }
 
@@ -136,13 +142,17 @@ export function listeBasiswechsel(lockPfad: string, neueBasis: ProfilBasis): Bas
   const lock = ladeLock(lockPfad);
   return neueBasis.dateien.map((datei) => {
     const eintrag = lock[datei.dateiname];
+    // Verglichen wird der gespeicherte Stand gegen den, der jetzt
+    // geschrieben wuerde: beides einschliesslich Kopfzeile. Ein Vergleich
+    // gegen den blossen Basisrumpf meldete jede Datei als geaendert.
+    const neuePruefsumme = pruefsumme(formatiereProfildatei(datei, neueBasis.basisversion));
     return {
       dateiname: datei.dateiname,
-      aendertSich: eintrag?.pruefsumme !== datei.pruefsumme,
+      aendertSich: eintrag?.pruefsumme !== neuePruefsumme,
       alteBasisversion: eintrag?.basisversion,
       neueBasisversion: neueBasis.basisversion,
       altePruefsumme: eintrag?.pruefsumme,
-      neuePruefsumme: datei.pruefsumme,
+      neuePruefsumme,
     };
   });
 }

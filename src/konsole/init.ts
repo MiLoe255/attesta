@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { dump } from "js-yaml";
 import { ladeProfilBasis } from "../gemeinsam/regelsatz";
 import { formatiereProfildatei } from "../gemeinsam/profildatei";
+import { pruefsumme } from "../gemeinsam/regelsatz";
 import { KonsoleFehler } from "../gemeinsam/fehler";
 import { listeBasiswechsel, type Lock } from "../gemeinsam/profilvergleich";
 import { EIGENE_ROLLEN_PFAD, EIGENE_ROLLEN_VORLAGE } from "../gemeinsam/eigene-rollen";
@@ -58,7 +59,10 @@ export function fuehreInitAus(zielVerzeichnis: string, optionen: InitOptionen = 
     writeFileSync(ziel, inhalt, "utf-8");
     geschriebeneDateien.push(ziel);
     lock[datei.dateiname] = {
-      pruefsumme: datei.pruefsumme,
+      // Pruefsumme der Datei, wie sie geschrieben wurde, einschliesslich
+      // Kopfzeile. Die Pruefsumme des blossen Rumpfs wuerde nie wieder
+      // getroffen, weil im Kundenrepository immer die volle Datei liegt.
+      pruefsumme: pruefsumme(inhalt),
       basisversion: basis.basisversion,
       erzeugt_am: zeitpunkt,
     };

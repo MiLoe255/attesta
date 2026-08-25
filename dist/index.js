@@ -31001,7 +31001,7 @@ function vergleicheDatei(params) {
       details: `profil.lock nennt ${lockEintrag.basisversion}, installiert ist ${aktuelleBasisversion}`
     };
   }
-  if ((0, import_attesta_core.pruefsumme)(profilInhalt) === basisDatei.pruefsumme) {
+  if ((0, import_attesta_core.pruefsumme)(profilInhalt) === lockEintrag.pruefsumme) {
     return { dateiname, zustand: "deckungsgleich" };
   }
   const basisWerte = /* @__PURE__ */ new Set();
