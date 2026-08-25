@@ -26948,7 +26948,7 @@ var require_regelsatz = __commonJS({
     exports2.ladeMeta = ladeMeta;
     exports2.ladeCriticality = ladeCriticality;
     exports2.ladeDelegation = ladeDelegation;
-    exports2.ladeKsMatrix = ladeKsMatrix;
+    exports2.ladeKsMatrix = ladeKsMatrix2;
     exports2.ladeTraceDepth = ladeTraceDepth;
     exports2.ladePhasen = ladePhasen;
     exports2.ladeRollen = ladeRollen2;
@@ -27017,7 +27017,7 @@ var require_regelsatz = __commonJS({
       "gate_tiefe",
       "security"
     ];
-    function ladeKsMatrix() {
+    function ladeKsMatrix2() {
       const daten = ladeYaml("ks-matrix.yaml");
       const dimensionen = (0, fehler_1.pruefePflichtfeld)(daten.dimensionen, "ks-matrix.yaml", "dimensionen");
       for (const dimension of KS_MATRIX_DIMENSIONEN) {
@@ -31177,6 +31177,10 @@ function formatiereBefund(felder) {
 }
 
 // src/gemeinsam/delegationsreife.ts
+var S_RANG = { S1: 1, S2: 2, S3: 3, S4: 4 };
+function minimumSStufe(a, b) {
+  return S_RANG[a] <= S_RANG[b] ? a : b;
+}
 function bestimmeDelegationsreife(b) {
   const fehlend = [];
   if (!b.stufe1.profilVorhanden) fehlend.push("Profil (attesta/profil/)");
@@ -31191,6 +31195,70 @@ function bestimmeDelegationsreife(b) {
   const stufe3 = stufe2 && b.stufe3.leitplankenMaschinenlesbar && b.stufe3.gate3Durchlaufen;
   const stufe = stufe3 ? 3 : stufe2 ? 2 : 1;
   return { stufe, fehlend };
+}
+function bestimmeZulaessigeDelegation(angefragt, reife, matrixObergrenze2) {
+  const reifeGrenze = `S${reife}`;
+  const zulaessig = minimumSStufe(reifeGrenze, matrixObergrenze2);
+  return { angefragt, reifeGrenze, matrixGrenze: matrixObergrenze2, zulaessig, akzeptiert: S_RANG[angefragt] <= S_RANG[zulaessig] };
+}
+function formatierePruefung(p) {
+  if (p.akzeptiert) return `${p.angefragt} akzeptiert (zulaessig bis ${p.zulaessig}).`;
+  const engere = p.reifeGrenze === p.zulaessig ? "Delegationsreife" : "K-mal-S-Matrix";
+  return `${p.angefragt} abgelehnt. Delegationsreife erlaubt bis ${p.reifeGrenze}, K-mal-S-Matrix erlaubt bis ${p.matrixGrenze}, engere Grenze: ${engere} (${p.zulaessig}).`;
+}
+
+// src/gemeinsam/ksmatrix.generated.ts
+var KS_MAX_DELEGATION = {
+  "K1": "S4",
+  "K2": "S3",
+  "K3": "S2"
+};
+
+// src/action/arbeitspaket.ts
+function leseEinstufung(text) {
+  const k = text.match(/\bK([123])\b/);
+  const s = text.match(/\bS([1-4])\b/);
+  return {
+    kritikalitaet: k ? `K${k[1]}` : null,
+    delegation: s ? `S${s[1]}` : null
+  };
+}
+function kritikalitaetMitRueckfall(einstufung) {
+  if (einstufung.kritikalitaet) return { stufe: einstufung.kritikalitaet, ausRueckfall: false };
+  return { stufe: "K3", ausRueckfall: true };
+}
+function matrixObergrenze(stufe) {
+  return KS_MAX_DELEGATION[stufe];
+}
+
+// src/gemeinsam/nachweisgrad.ts
+var NACHWEISGRAD_FORMELVERSION = "1.0.0";
+var PUNKTE = { erfuellt: 100, warnung: 50, verletzt: 0 };
+function berechneAnforderungsguete(ergebnisse) {
+  if (ergebnisse.length === 0) return null;
+  const summe = ergebnisse.reduce((s, e) => s + PUNKTE[e.gesamt], 0);
+  return { wert: Math.round(summe / ergebnisse.length), nenner: ergebnisse.length };
+}
+function berechneNachweisgrad(teile) {
+  const werte = [teile.kettendeckung, teile.anforderungsguete, teile.belegfrische];
+  const nachweisgrad = werte.some((teilwert) => teilwert === null) ? null : Math.min(...werte.map((t) => t.wert));
+  return { ...teile, nachweisgrad, formelversion: NACHWEISGRAD_FORMELVERSION };
+}
+var NENNER_MINDESTGROESSE = 5;
+function formatiereTeilwert(name, teilwert) {
+  if (teilwert === null) return `${name}: nicht ermittelbar`;
+  if (teilwert.nenner < NENNER_MINDESTGROESSE) return `${name}: ${teilwert.nenner} Faelle, zu wenige fuer eine Quote`;
+  return `${name}: ${teilwert.wert} (Nenner ${teilwert.nenner})`;
+}
+function formatiereNachweisgrad(n) {
+  const zeilen = [
+    n.nachweisgrad === null ? "Nachweisgrad: nicht bestimmbar" : `Nachweisgrad: ${n.nachweisgrad}`,
+    formatiereTeilwert("Kettendeckung", n.kettendeckung),
+    formatiereTeilwert("Anforderungsguete", n.anforderungsguete),
+    formatiereTeilwert("Belegfrische", n.belegfrische),
+    `Formelversion: ${n.formelversion}`
+  ];
+  return zeilen.join("\n");
 }
 
 // src/action/gate3.ts
@@ -31432,6 +31500,20 @@ async function behandleKommentarEreignis(octokit, owner, repo) {
     await verarbeiteAuswertung(vorgang, werteBefehlAus(comment.body), "Befehl-Ergebnis");
   }
 }
+async function baueDelegationsabschnitt(octokit, owner, repo, issueText) {
+  const einstufung = leseEinstufung(issueText);
+  if (!einstufung.delegation) return [];
+  const { stufe: kStufe, ausRueckfall } = kritikalitaetMitRueckfall(einstufung);
+  const { data: repoDaten } = await octokit.rest.repos.get({ owner, repo });
+  const bedingungen = await ermittleStufenBedingungen(octokit, { owner, repo, branch: repoDaten.default_branch });
+  const reife = bestimmeDelegationsreife(bedingungen);
+  const pruefung = bestimmeZulaessigeDelegation(einstufung.delegation, reife.stufe, matrixObergrenze(kStufe));
+  const zeilen = ["", "### Delegationsgrenze", "", formatierePruefung(pruefung)];
+  if (ausRueckfall) {
+    zeilen.push("", "Keine Kritikalitaet angegeben, deshalb als K3 behandelt (REQ-29).");
+  }
+  return zeilen;
+}
 async function behandleIssueEreignis(octokit, owner, repo) {
   const issue = import_github2.context.payload.issue;
   if (!issue?.body) {
@@ -31449,6 +31531,13 @@ async function behandleIssueEreignis(octokit, owner, repo) {
       zeilen.push(`- ${formatiereBefund({ regelsatzdatei: `Issue #${issue.number}`, regel })}`);
     }
   }
+  const nachweisgrad = berechneNachweisgrad({
+    kettendeckung: null,
+    anforderungsguete: berechneAnforderungsguete([ergebnis]),
+    belegfrische: null
+  });
+  zeilen.push("", "### Nachweisgrad", "", "```", formatiereNachweisgrad(nachweisgrad), "```");
+  zeilen.push(...await baueDelegationsabschnitt(octokit, owner, repo, issue.body));
   await mitWiederholungBeiRatenbegrenzung(() => schreibeFestenKommentar(octokit, { owner, repo, pullNummer: issue.number }, zeilen.join("\n")));
 }
 async function behandleMonatsbericht(octokit, owner, repo) {

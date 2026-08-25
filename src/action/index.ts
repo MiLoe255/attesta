@@ -10,17 +10,23 @@
  * Check-Run-Zustands, Ursachencode als Datei, Lizenzhinweis,
  * Monatsbericht als Pull Request, Anforderungsguete auf Issue-Texten,
  * Gate-3-Nachweis per Selbstauskunft (/attesta gate3 bestanden, siehe
- * gate3.ts).
+ * gate3.ts), Nachweisgrad und Delegationsgrenze im Issue-Kommentar
+ * (REQ-26, REQ-33).
  *
- * Der Zustand des Grundlauf-Check-Runs bleibt weiterhin ein Platzhalter:
- * REQ-26 (Nachweisgrad) ist als reine Funktion gebaut und getestet
- * (gemeinsam/nachweisgrad.ts), aber nicht in den PR-Grundlauf verdrahtet,
- * weil keine Anforderung im 47er-Bestand festlegt, welche Dateien eines
- * Pull Requests als "Anforderungen" zu pruefen sind. Der Ursachenvorschlag
- * aus Indizien (REQ-30) hat keine Indizien-Engine, weil D3-16 dafuer
- * historische Daten aus rund fuenfzig Gate-Laeufen verlangt, die es noch
- * nicht gibt: vorschlag bleibt bis dahin immer leer, uebernommen
- * entsprechend immer falsch.
+ * Zwei Groessen bleiben strukturell offen und werden als solche
+ * ausgewiesen statt geraten:
+ * - Kettendeckung und Belegfrische fehlen, deshalb ist der Nachweisgrad
+ *   als Minimum der drei Werte immer "nicht bestimmbar" (GR-8.6). Die
+ *   Anforderungsguete darin ist echt und stammt aus der Pruefung des
+ *   jeweiligen Issue-Textes.
+ * - Der Ursachenvorschlag aus Indizien (REQ-30) hat keine
+ *   Indizien-Engine, weil D3-16 dafuer historische Daten aus rund
+ *   fuenfzig Gate-Laeufen verlangt, die es noch nicht gibt: vorschlag
+ *   bleibt bis dahin immer leer, uebernommen entsprechend immer falsch.
+ *
+ * Der Zustand des Grundlauf-Check-Runs am Pull Request bleibt ein
+ * Platzhalter: welche Dateien eines Pull Requests als "Anforderungen" zu
+ * pruefen sind, legt keine Anforderung im 47er-Bestand fest.
  */
 import * as core from "@actions/core";
 import { context } from "@actions/github";
@@ -44,7 +50,9 @@ import { PROFILBASIS } from "../gemeinsam/profilbasis.generated";
 import { vergleicheProfilVerzeichnis, type ProfilBefund } from "../gemeinsam/profilvergleich";
 import { pruefeAnforderungMitRegelsatz } from "../gemeinsam/guete";
 import { formatiereBefund } from "../gemeinsam/meldung";
-import { bestimmeDelegationsreife } from "../gemeinsam/delegationsreife";
+import { bestimmeDelegationsreife, bestimmeZulaessigeDelegation, formatierePruefung } from "../gemeinsam/delegationsreife";
+import { kritikalitaetMitRueckfall, leseEinstufung, matrixObergrenze } from "./arbeitspaket";
+import { berechneAnforderungsguete, berechneNachweisgrad, formatiereNachweisgrad } from "../gemeinsam/nachweisgrad";
 import { ermittleStufenBedingungen } from "./delegationsreife-ermittlung";
 import { erzeugeGate3Attest, GATE3_PFAD, istGate3Befehl, leseBegruendung } from "./gate3";
 import { schreibeGate3Attest } from "./gate3speicher";
@@ -279,6 +287,30 @@ async function behandleKommentarEreignis(octokit: Octokit, owner: string, repo: 
  * Konsole (die Dateien lokal ohne Netz prueft). Ruft denselben
  * Programmteil auf wie `attesta guete <Pfad>`, siehe gemeinsam/guete.ts.
  */
+/**
+ * REQ-33: die zulaessige Delegationsstufe ist das Minimum aus
+ * Delegationsreife und K-mal-S-Matrix. Eine ueberschreitende Angabe wird
+ * abgelehnt und begruendet (GR-10.4, beide Grenzen und die engere
+ * davon). Fehlt die Kritikalitaet, greift REQ-29: strengste Stufe.
+ * Fehlt die Delegationsangabe, gibt es nichts zu pruefen.
+ */
+async function baueDelegationsabschnitt(octokit: Octokit, owner: string, repo: string, issueText: string): Promise<string[]> {
+  const einstufung = leseEinstufung(issueText);
+  if (!einstufung.delegation) return [];
+
+  const { stufe: kStufe, ausRueckfall } = kritikalitaetMitRueckfall(einstufung);
+  const { data: repoDaten } = await octokit.rest.repos.get({ owner, repo });
+  const bedingungen = await ermittleStufenBedingungen(octokit, { owner, repo, branch: repoDaten.default_branch });
+  const reife = bestimmeDelegationsreife(bedingungen);
+
+  const pruefung = bestimmeZulaessigeDelegation(einstufung.delegation, reife.stufe, matrixObergrenze(kStufe));
+  const zeilen = ["", "### Delegationsgrenze", "", formatierePruefung(pruefung)];
+  if (ausRueckfall) {
+    zeilen.push("", "Keine Kritikalitaet angegeben, deshalb als K3 behandelt (REQ-29).");
+  }
+  return zeilen;
+}
+
 async function behandleIssueEreignis(octokit: Octokit, owner: string, repo: string): Promise<void> {
   const issue = context.payload.issue as { number: number; body?: string | null } | undefined;
   if (!issue?.body) {
@@ -297,6 +329,18 @@ async function behandleIssueEreignis(octokit: Octokit, owner: string, repo: stri
       zeilen.push(`- ${formatiereBefund({ regelsatzdatei: `Issue #${issue.number}`, regel })}`);
     }
   }
+
+  // REQ-26 Abnahme 2: der Kommentar zeigt alle drei Einzelwerte und den Nenner.
+  // Kettendeckung und Belegfrische sind nicht ermittelbar, deshalb ist der
+  // Nachweisgrad als Minimum der drei ebenfalls nicht bestimmbar (GR-8.6).
+  const nachweisgrad = berechneNachweisgrad({
+    kettendeckung: null,
+    anforderungsguete: berechneAnforderungsguete([ergebnis]),
+    belegfrische: null,
+  });
+  zeilen.push("", "### Nachweisgrad", "", "```", formatiereNachweisgrad(nachweisgrad), "```");
+
+  zeilen.push(...(await baueDelegationsabschnitt(octokit, owner, repo, issue.body)));
 
   await mitWiederholungBeiRatenbegrenzung(() => schreibeFestenKommentar(octokit, { owner, repo, pullNummer: issue.number }, zeilen.join("\n")));
 }
