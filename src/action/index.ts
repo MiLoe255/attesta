@@ -49,6 +49,7 @@ import { stelleBerichtBereit, type BerichtPrClient } from "./berichtpr";
 import { PROFILBASIS } from "../gemeinsam/profilbasis.generated";
 import { vergleicheProfilVerzeichnis, type ProfilBefund } from "../gemeinsam/profilvergleich";
 import { pruefeAnforderungMitRegelsatz } from "../gemeinsam/guete";
+import { leseEigeneRollen } from "../gemeinsam/eigene-rollen";
 import { formatiereBefund } from "../gemeinsam/meldung";
 import { bestimmeDelegationsreife, bestimmeZulaessigeDelegation, formatierePruefung } from "../gemeinsam/delegationsreife";
 import { kritikalitaetMitRueckfall, leseEinstufung, matrixObergrenze } from "./arbeitspaket";
@@ -318,7 +319,9 @@ async function behandleIssueEreignis(octokit: Octokit, owner: string, repo: stri
     return;
   }
 
-  const ergebnis = pruefeAnforderungMitRegelsatz(issue.body);
+  const eigene = leseEigeneRollen(arbeitsverzeichnis());
+  for (const befund of eigene.befunde) core.warning(befund);
+  const ergebnis = pruefeAnforderungMitRegelsatz(issue.body, eigene.rollen);
   const zeilen = ["## Attesta Zyklus: Anforderungsguete", ""];
   const befunde = ergebnis.pruefungen.filter((p) => p.zustand !== "erfuellt");
   if (befunde.length === 0) {

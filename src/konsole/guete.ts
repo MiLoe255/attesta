@@ -9,6 +9,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { pruefeAnforderungMitRegelsatz } from "../gemeinsam/guete";
+import { leseEigeneRollen } from "../gemeinsam/eigene-rollen";
 import { formatiereBefund } from "../gemeinsam/meldung";
 import { KonsoleFehler } from "../gemeinsam/fehler";
 import type { Befehl } from "./befehl";
@@ -29,7 +30,9 @@ export const gueteBefehl: Befehl = {
       throw new KonsoleFehler(`Pfad nicht gefunden: ${pfad}`, 2);
     }
     const text = readFileSync(pfad, "utf-8");
-    const ergebnis = pruefeAnforderungMitRegelsatz(text);
+    const eigene = leseEigeneRollen(process.cwd());
+    for (const befund of eigene.befunde) console.log(`Hinweis: ${befund}`);
+    const ergebnis = pruefeAnforderungMitRegelsatz(text, eigene.rollen);
 
     let befundGefunden = false;
     for (const pruefung of ergebnis.pruefungen) {

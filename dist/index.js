@@ -27057,7 +27057,7 @@ var require_regelsatz = __commonJS({
         phasen
       };
     }
-    var KENNUNG_MUSTER = /^[a-z][a-z0-9_]*$/;
+    var KENNUNG_MUSTER2 = /^[a-z][a-z0-9_]*$/;
     function ladeRollen2() {
       const daten = ladeYaml("rollen.yaml");
       const rollen = (0, fehler_1.pruefePflichtfeld)(daten.rollen, "rollen.yaml", "rollen");
@@ -27066,7 +27066,7 @@ var require_regelsatz = __commonJS({
       }
       for (const rolle of rollen) {
         const kennung = (0, fehler_1.pruefePflichtfeld)(rolle.kennung, "rollen.yaml", "rollen[].kennung");
-        if (!KENNUNG_MUSTER.test(kennung)) {
+        if (!KENNUNG_MUSTER2.test(kennung)) {
           throw new fehler_1.RegelsatzFehler("rollen.yaml", `rollen.${kennung}.kennung`, "muss Kleinbuchstaben ohne Leerzeichen sein");
         }
         (0, fehler_1.pruefePflichtfeld)(rolle.anzeigename, "rollen.yaml", `rollen.${kennung}.anzeigename`);
@@ -31157,7 +31157,7 @@ function pruefeModalverb(text) {
 function pruefeAkteur(text, rollen) {
   const gefunden = rollen.find((rolle) => zaehleWortTreffer(text, rolle) > 0);
   if (!gefunden) {
-    return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml gefunden" };
+    return { pruefung: "benannter Akteur", zustand: "verletzt", details: "keine Rolle aus rollen.yaml oder attesta/rollen-eigene.yaml gefunden" };
   }
   return { pruefung: "benannter Akteur", zustand: "erfuellt", details: gefunden };
 }
@@ -31215,12 +31215,76 @@ function pruefeAnforderung(text, regelsatz) {
   const gesamt = pruefungen.reduce((schlechtester, p) => RANG[p.zustand] > RANG[schlechtester] ? p.zustand : schlechtester, "erfuellt");
   return { gesamt, pruefungen };
 }
-function pruefeAnforderungMitRegelsatz(text) {
+function pruefeAnforderungMitRegelsatz(text, eigeneRollen = []) {
   return pruefeAnforderung(text, {
-    rollen: [...GUETE_ROLLEN],
+    rollen: [...GUETE_ROLLEN, ...eigeneRollen],
     unschaerfe: GUETE_UNSCHAERFE,
     technologien: [...GUETE_TECHNOLOGIEN]
   });
+}
+
+// src/gemeinsam/eigene-rollen.ts
+var import_node_fs3 = require("node:fs");
+var EIGENE_ROLLEN_PFAD = "attesta/rollen-eigene.yaml";
+var KENNUNG_MUSTER = /^[a-z][a-z0-9_]*$/;
+var MINDESTWOERTER_DEFINITION = 5;
+function grundbestandKennungen() {
+  return new Set(GUETE_ROLLEN.map((name) => name.toLowerCase().replace(/\s+/g, "_")));
+}
+function pruefeRolle(roh, index, bekannt, belegt) {
+  const stelle = `${EIGENE_ROLLEN_PFAD}, Eintrag ${index + 1}`;
+  const { kennung, anzeigename, definition } = roh;
+  if (!kennung || !KENNUNG_MUSTER.test(kennung)) {
+    return { befund: `${stelle}: kennung fehlt oder enthaelt andere Zeichen als Kleinbuchstaben, Ziffern und Unterstrich` };
+  }
+  if (bekannt.has(kennung)) {
+    return { befund: `${stelle}: kennung "${kennung}" gehoert bereits zum Grundbestand und wird nicht ueberschrieben` };
+  }
+  if (belegt.has(kennung)) {
+    return { befund: `${stelle}: kennung "${kennung}" kommt in der Datei mehrfach vor` };
+  }
+  if (!anzeigename || anzeigename.trim().length === 0) {
+    return { befund: `${stelle}: anzeigename fehlt` };
+  }
+  if (!definition || definition.trim().split(/\s+/).length < MINDESTWOERTER_DEFINITION) {
+    return { befund: `${stelle}: definition fehlt oder umfasst weniger als ${MINDESTWOERTER_DEFINITION} Woerter` };
+  }
+  return { rolle: { kennung, anzeigename: anzeigename.trim(), definition } };
+}
+function leseEigeneRollen(wurzel) {
+  const pfad = `${wurzel}/${EIGENE_ROLLEN_PFAD}`;
+  if (!(0, import_node_fs3.existsSync)(pfad)) return { rollen: [], befunde: [] };
+  let geparst;
+  try {
+    geparst = load((0, import_node_fs3.readFileSync)(pfad, "utf-8"));
+  } catch {
+    return { rollen: [], befunde: [`${EIGENE_ROLLEN_PFAD}: kein gueltiges YAML, der Grundbestand gilt weiter`] };
+  }
+  if (geparst === null || geparst === void 0) return { rollen: [], befunde: [] };
+  if (typeof geparst !== "object") {
+    return { rollen: [], befunde: [`${EIGENE_ROLLEN_PFAD}: kein YAML-Objekt, der Grundbestand gilt weiter`] };
+  }
+  const liste = geparst.rollen;
+  if (liste === void 0 || liste === null) return { rollen: [], befunde: [] };
+  if (!Array.isArray(liste)) {
+    return { rollen: [], befunde: [`${EIGENE_ROLLEN_PFAD}: das Feld "rollen" ist keine Liste`] };
+  }
+  const bekannt = grundbestandKennungen();
+  const belegt = /* @__PURE__ */ new Set();
+  const rollen = [];
+  const befunde = [];
+  liste.forEach((roh, index) => {
+    const { rolle, befund } = pruefeRolle(roh ?? {}, index, bekannt, belegt);
+    if (befund) {
+      befunde.push(befund);
+      return;
+    }
+    if (rolle) {
+      belegt.add(rolle.kennung);
+      rollen.push(rolle.anzeigename);
+    }
+  });
+  return { rollen, befunde };
 }
 
 // src/gemeinsam/meldung.ts
@@ -31609,7 +31673,9 @@ async function behandleIssueEreignis(octokit, owner, repo) {
     core2.info("Issue ohne Text, nichts zu pruefen");
     return;
   }
-  const ergebnis = pruefeAnforderungMitRegelsatz(issue.body);
+  const eigene = leseEigeneRollen(arbeitsverzeichnis());
+  for (const befund of eigene.befunde) core2.warning(befund);
+  const ergebnis = pruefeAnforderungMitRegelsatz(issue.body, eigene.rollen);
   const zeilen = ["## Attesta Zyklus: Anforderungsguete", ""];
   const befunde = ergebnis.pruefungen.filter((p) => p.zustand !== "erfuellt");
   if (befunde.length === 0) {

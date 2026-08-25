@@ -46,6 +46,7 @@ niemals direkt auf dem Hauptzweig:
 |---|---|
 | `attesta/profil/*.yaml`, drei Stück | bei der Einrichtung, durch dich |
 | `attesta/profil.lock` | bei der Einrichtung, durch dich |
+| `attesta/rollen-eigene.yaml` | bei der Einrichtung, danach von dir gepflegt |
 | `attesta/ursachen/*.yaml` | sobald jemand einen Ursachencode setzt |
 | `attesta/notfaelle/*.yaml` | sobald jemand `/attesta notfall` ruft |
 | `attesta/gates/p3-bestanden.yaml` | sobald jemand Gate 3 bestätigt |
@@ -112,8 +113,8 @@ identisch, das ist durch einen Test abgesichert (GR-14.5).
 4. Je Datei entweder **Kopieren** und von Hand anlegen oder
    **Datei im Repository anlegen** klicken
 
-Die Seite erzeugt fünf Dateien: drei Profildateien, den Workflow und das
-Issue-Formular. Sie sendet dabei nichts an den Betreiber und speichert nichts
+Die Seite erzeugt sechs Dateien: drei Profildateien, die Datei für
+betriebseigene Rollen, den Workflow und das Issue-Formular. Sie sendet dabei nichts an den Betreiber und speichert nichts
 im Browser, ein Neuladen leert alle Felder.
 
 ### Weg B: Konsole, nur mit Zugriff auf `attesta-core`
@@ -265,6 +266,35 @@ Administratorrecht voraus, und die Begründung ist Pflicht.
 **Das ist eine Selbstauskunft und kein objektiver Nachweis.** Der Bausatz
 prüft nicht, ob Gate 3 wirklich durchlaufen wurde, nur dass eine berechtigte
 Person es behauptet hat.
+
+---
+
+## 6b. Eigene Rollen eintragen
+
+Die Anforderungsprüfung verlangt einen benannten Akteur. Der generische
+Grundbestand führt neun Rollen: Auftraggeber, Fachexperte, technische Leitung,
+Entwicklung, Reviewer, Qualitätssicherung, Betrieb, Endnutzer, KI-Agent.
+
+**Rollennamen aus deinem Betrieb trägst du selbst ein**, in
+`attesta/rollen-eigene.yaml`:
+
+```yaml
+rollen:
+  - kennung: produktionsleiter
+    anzeigename: "Produktionsleiter"
+    definition: "verantwortet die laufende Fertigung und den Ausschuss einer Schicht"
+```
+
+| Regel je Eintrag | |
+|---|---|
+| `kennung` | Kleinbuchstaben, Ziffern, Unterstrich. Nicht aus dem Grundbestand |
+| `anzeigename` | so, wie die Rolle in einer Anforderung geschrieben wird |
+| `definition` | mindestens fünf Wörter |
+
+**Diese Datei gehört dir.** Sie ist kein Teil des Profils, wird bei einem
+Basiswechsel nie überschrieben und nicht gegen die Profilbasis geprüft. Ein
+Tippfehler darin hält keinen Lauf an: der Befund wird benannt, und geprüft wird
+mit dem Grundbestand weiter.
 
 ---
 

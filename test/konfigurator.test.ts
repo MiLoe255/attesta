@@ -4,9 +4,10 @@ import { erzeugeHtml, sammleDateien } from "../src/gemeinsam/konfigurator";
 import { formatiereProfildatei } from "../src/gemeinsam/profildatei";
 import { ladeProfilBasis } from "../src/gemeinsam/regelsatz";
 
-test("REQ-43: liefert fuenf Dateien, drei Profildateien plus Workflow plus Issue-Formular", () => {
+test("REQ-43: liefert sechs Dateien, drei Profildateien plus eigene Rollen, Workflow und Issue-Formular", () => {
   const dateien = sammleDateien();
-  assert.equal(dateien.length, 5);
+  assert.equal(dateien.length, 6);
+  assert.ok(dateien.some((d) => d.pfad === "attesta/rollen-eigene.yaml"));
   assert.ok(dateien.some((d) => d.pfad === ".github/workflows/attesta.yml"));
   assert.ok(dateien.some((d) => d.pfad === ".github/ISSUE_TEMPLATE/arbeitspaket.yml"));
   assert.ok(dateien.some((d) => d.pfad === "attesta/profil/wortlisten.yaml"));
