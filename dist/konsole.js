@@ -3105,13 +3105,14 @@ function listeBasiswechsel(lockPfad, neueBasis) {
   const lock = ladeLock(lockPfad);
   return neueBasis.dateien.map((datei) => {
     const eintrag = lock[datei.dateiname];
+    const neuePruefsumme = (0, import_attesta_core.pruefsumme)(formatiereProfildatei(datei, neueBasis.basisversion));
     return {
       dateiname: datei.dateiname,
-      aendertSich: eintrag?.pruefsumme !== datei.pruefsumme,
+      aendertSich: eintrag?.pruefsumme !== neuePruefsumme,
       alteBasisversion: eintrag?.basisversion,
       neueBasisversion: neueBasis.basisversion,
       altePruefsumme: eintrag?.pruefsumme,
-      neuePruefsumme: datei.pruefsumme
+      neuePruefsumme
     };
   });
 }
@@ -3389,7 +3390,10 @@ function fuehreInitAus(zielVerzeichnis, optionen = {}) {
     (0, import_node_fs3.writeFileSync)(ziel, inhalt, "utf-8");
     geschriebeneDateien.push(ziel);
     lock[datei.dateiname] = {
-      pruefsumme: datei.pruefsumme,
+      // Pruefsumme der Datei, wie sie geschrieben wurde, einschliesslich
+      // Kopfzeile. Die Pruefsumme des blossen Rumpfs wuerde nie wieder
+      // getroffen, weil im Kundenrepository immer die volle Datei liegt.
+      pruefsumme: (0, import_attesta_core.pruefsumme)(inhalt),
       basisversion: basis.basisversion,
       erzeugt_am: zeitpunkt
     };

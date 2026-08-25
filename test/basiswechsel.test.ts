@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { dump, load } from "js-yaml";
 import { fuehreInitAus, initBefehl } from "../src/konsole/init";
-import { listeBasiswechsel, type Lock } from "../src/gemeinsam/profilvergleich";
+import { listeBasiswechsel, vergleicheProfilVerzeichnis, type Lock } from "../src/gemeinsam/profilvergleich";
 import { ladeProfilBasis } from "../src/gemeinsam/regelsatz";
 
 function neuesTestverzeichnis(): string {
@@ -111,6 +111,34 @@ test("REQ-10 Abnahme 2: ohne --ueberschreiben wird nichts gezeigt und nichts ges
   } finally {
     t.mock.restoreAll();
     process.chdir(cwd);
+    rmSync(wurzel, { recursive: true, force: true });
+  }
+});
+
+test("Live-Fund: ein frisch angelegtes Profil ist deckungsgleich, nicht abgewichen", () => {
+  const wurzel = neuesTestverzeichnis();
+  try {
+    fuehreInitAus(wurzel);
+    const befunde = vergleicheProfilVerzeichnis(join(wurzel, "attesta", "profil"), join(wurzel, "attesta", "profil.lock"), ladeProfilBasis());
+    assert.equal(befunde.length, 3);
+    for (const befund of befunde) {
+      assert.equal(befund.zustand, "deckungsgleich", `${befund.dateiname} sollte unveraendert deckungsgleich sein`);
+    }
+  } finally {
+    rmSync(wurzel, { recursive: true, force: true });
+  }
+});
+
+test("eine vom Kunden geaenderte Profildatei wird als abgewichen gemeldet", () => {
+  const wurzel = neuesTestverzeichnis();
+  try {
+    fuehreInitAus(wurzel);
+    const datei = join(wurzel, "attesta", "profil", "wortlisten.yaml");
+    writeFileSync(datei, readFileSync(datei, "utf-8").replace("- kennung: reviewer", "- kennung: reviewer\n    zusatz: geaendert"), "utf-8");
+    const befunde = vergleicheProfilVerzeichnis(join(wurzel, "attesta", "profil"), join(wurzel, "attesta", "profil.lock"), ladeProfilBasis());
+    const wortlisten = befunde.find((b) => b.dateiname === "wortlisten.yaml");
+    assert.notEqual(wortlisten?.zustand, "deckungsgleich");
+  } finally {
     rmSync(wurzel, { recursive: true, force: true });
   }
 });
