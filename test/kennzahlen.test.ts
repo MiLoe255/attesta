@@ -9,6 +9,7 @@ const KEINE_BEDINGUNGEN: StufenBedingungen = {
   stufe1: { profilVorhanden: false, issueFormularVorhanden: false },
   stufe2: { pruefungenVerbindlich: false, vierAugenBelegt: false, keinSelbstMerge: false },
   stufe3: { leitplankenMaschinenlesbar: false, gate3Durchlaufen: false },
+  stufe4: { historieNachgewiesen: false },
 };
 
 test("REQ-41 GR-13.3: der Datensatz enthaelt ausschliesslich Zahlen und Text, kein Freitextfeld", () => {

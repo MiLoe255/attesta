@@ -3478,6 +3478,13 @@ var URSACHEN = [
   }
 ];
 
+// src/gemeinsam/delegationsreife.generated.ts
+var REIFE_HISTORIE = {
+  "arbeitspakete_in_folge": 10,
+  "ohne_notfall": true,
+  "ohne_werkzeugfehler": true
+};
+
 // src/gemeinsam/delegationsreife.ts
 function bestimmeDelegationsreife(b) {
   const fehlend = [];
@@ -3491,7 +3498,11 @@ function bestimmeDelegationsreife(b) {
   if (!b.stufe3.leitplankenMaschinenlesbar) fehlend.push("maschinenlesbare Leitplanken");
   if (!b.stufe3.gate3Durchlaufen) fehlend.push("durchlaufenes Gate 3 (Selbstauskunft ueber /attesta gate3 bestanden <Begruendung>)");
   const stufe3 = stufe2 && b.stufe3.leitplankenMaschinenlesbar && b.stufe3.gate3Durchlaufen;
-  const stufe = stufe3 ? 3 : stufe2 ? 2 : 1;
+  if (!b.stufe4.historieNachgewiesen) {
+    fehlend.push(`belegte Historie (${REIFE_HISTORIE.arbeitspakete_in_folge} Arbeitspakete in Folge ohne Notfall und ohne Werkzeugfehler)`);
+  }
+  const stufe4 = stufe3 && b.stufe4.historieNachgewiesen;
+  const stufe = stufe4 ? 4 : stufe3 ? 3 : stufe2 ? 2 : 1;
   return { stufe, fehlend };
 }
 
@@ -3549,7 +3560,8 @@ function ermittleStufenBedingungenLokal(wurzel) {
     stufe3: {
       leitplankenMaschinenlesbar: existiert(".github/workflows") && (existiert("CLAUDE.md") || existiert("AGENTS.md")),
       gate3Durchlaufen: existiert("attesta/gates/p3-bestanden.yaml")
-    }
+    },
+    stufe4: { historieNachgewiesen: false }
   };
 }
 
