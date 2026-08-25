@@ -31192,11 +31192,14 @@ function pruefeTechnologie(text, technologien) {
 }
 function pruefePflichtfelder(text) {
   const hatK = /\bK[123]\b/.test(text);
-  const hatS = /\bS[1-4]\b/.test(text);
-  if (hatK && hatS) {
+  const hatEinordnung = /\bS[1-4]\b/.test(text) || /\bPriorit(ä|ae)t\b/i.test(text);
+  if (hatK && hatEinordnung) {
     return { pruefung: "Pflichtfelder gefuellt", zustand: "erfuellt" };
   }
-  const fehlend = [!hatK && "Kritikalitaet (K1 bis K3)", !hatS && "Delegationsstufe (S1 bis S4)"].filter(Boolean).join(", ");
+  const fehlend = [
+    !hatK && "Kritikalitaet (K1 bis K3)",
+    !hatEinordnung && "Delegationsstufe (S1 bis S4) oder Prioritaet"
+  ].filter(Boolean).join(", ");
   return { pruefung: "Pflichtfelder gefuellt", zustand: "verletzt", details: `fehlt: ${fehlend}` };
 }
 var RANG = { erfuellt: 0, warnung: 1, verletzt: 2 };

@@ -12,10 +12,15 @@
  * - "Messbarkeit" (GR-8.3) deckt Zahl-mit-Einheit und Vergleichsoperatoren
  *   ab. "Zustandsname aus dem Zustandsmodell" ist domaenenspezifisch und
  *   generisch nicht entscheidbar, deshalb nicht geprueft.
- * - "Pflichtfelder gefuellt" wird als K- und S-Kennzeichnung im Text
- *   ausgelegt (die zwei strukturellen Felder aus REQ-28, die in Issue und
- *   Datei gleichermassen pruefbar sind. "Begruendung" ist Freitext und
- *   nicht separat pruefbar).
+ * - "Pflichtfelder gefuellt" verlangt die Kritikalitaet und eine zweite
+ *   Einordnungsangabe. Welche das ist, unterscheidet sich je Artefakt:
+ *   das Arbeitspaket-Issue fuehrt die Delegationsstufe (REQ-28), das
+ *   REQ-Dokument die Prioritaet (Vorlage 03-req.md). Beide werden
+ *   akzeptiert, damit REQ-25 gilt: derselbe Programmteil, dasselbe
+ *   Ergebnis, unabhaengig vom Fundort. Am 25.08.2026 korrigiert, vorher
+ *   verlangte die Pruefung die Delegationsstufe auch im REQ-Dokument,
+ *   wo die Vorlage sie gar nicht vorsieht (im Dogfooding gegen das
+ *   Beispielprojekt gefunden).
  * - Die Modalverbliste (muss, soll, kann) ist fest im Code, keine eigene
  *   Regelsatzdatei: sie ist Teil der REQ-Schreibkonvention selbst, nicht
  *   projektspezifisch wie Rollen oder Unschaerfewoerter.
@@ -127,11 +132,16 @@ function pruefeTechnologie(text: string, technologien: string[]): PruefungsBefun
 
 function pruefePflichtfelder(text: string): PruefungsBefund {
   const hatK = /\bK[123]\b/.test(text);
-  const hatS = /\bS[1-4]\b/.test(text);
-  if (hatK && hatS) {
+  const hatEinordnung = /\bS[1-4]\b/.test(text) || /\bPriorit(ä|ae)t\b/i.test(text);
+  if (hatK && hatEinordnung) {
     return { pruefung: "Pflichtfelder gefuellt", zustand: "erfuellt" };
   }
-  const fehlend = [!hatK && "Kritikalitaet (K1 bis K3)", !hatS && "Delegationsstufe (S1 bis S4)"].filter(Boolean).join(", ");
+  const fehlend = [
+    !hatK && "Kritikalitaet (K1 bis K3)",
+    !hatEinordnung && "Delegationsstufe (S1 bis S4) oder Prioritaet",
+  ]
+    .filter(Boolean)
+    .join(", ");
   return { pruefung: "Pflichtfelder gefuellt", zustand: "verletzt", details: `fehlt: ${fehlend}` };
 }
 
