@@ -30584,6 +30584,12 @@ function bestimmeZustand(notfall, jetzt) {
 function istAktiv(notfall, jetzt) {
   return bestimmeZustand(notfall, jetzt) !== "nachdokumentiert";
 }
+function zaehleJeQuartal(notfaelle, jahr, quartal) {
+  return notfaelle.filter((notfall) => {
+    const datum = new Date(notfall.ausgerufen_am);
+    return datum.getUTCFullYear() === jahr && Math.floor(datum.getUTCMonth() / 3) + 1 === quartal;
+  }).length;
+}
 function pfadFuerNotfall(notfall) {
   const zeitstempel = notfall.ausgerufen_am.replace(/[:.]/g, "-");
   return `attesta/notfaelle/pr-${notfall.pull_request}-${zeitstempel}.yaml`;
@@ -30682,6 +30688,12 @@ function erzeugeUrsachendatei(params) {
     uebernommen: params.vorschlag !== void 0 && params.vorschlag === params.wert
   };
 }
+function berechneUebernahmequote(ursachen) {
+  const mitVorschlag = ursachen.filter((ursache) => ursache.vorschlag !== void 0);
+  if (mitVorschlag.length === 0) return null;
+  const uebernommen = mitVorschlag.filter((ursache) => ursache.uebernommen).length;
+  return uebernommen / mitVorschlag.length;
+}
 
 // src/action/ursachenspeicher.ts
 var URSACHEN_VERZEICHNIS = "attesta/ursachen";
@@ -30761,23 +30773,39 @@ function abschnittErstdurchlauf() {
     "Noch keine Daten: die Erstdurchlaufquote braucht eine Delegationsreife-Historie, die noch nicht aufgezeichnet wird."
   ].join("\n");
 }
+function zeileUebernahmequote(ursachen) {
+  const quote = berechneUebernahmequote(ursachen);
+  if (quote === null) {
+    return "Uebernahmequote: nicht bestimmbar, es wurde kein Ursachencode vorgeschlagen (REQ-30 ohne Indizien-Engine, siehe D3-16).";
+  }
+  const mitVorschlag = ursachen.filter((eintrag) => eintrag.vorschlag !== void 0).length;
+  return `Uebernahmequote: ${Math.round(quote * 100)} Prozent (Nenner ${mitVorschlag}). Beobachtung, keine Zielgroesse.`;
+}
 function abschnittUrsachenverteilung(ursachen) {
   const zeilen = URSACHEN.map((ursache) => {
     const anzahl = ursachen.filter((eintrag) => eintrag.wert === ursache.kennung).length;
     return `| ${ursache.label} | ${anzahl} |`;
   });
-  return ["## Ursachenverteilung", "", "| Ursache | Anzahl |", "|---|---|", ...zeilen].join("\n");
+  return ["## Ursachenverteilung", "", "| Ursache | Anzahl |", "|---|---|", ...zeilen, "", zeileUebernahmequote(ursachen)].join("\n");
 }
 function abschnittVerzichte() {
   return ["## Verzichte", "", "Kein Verzichtsmechanismus spezifiziert. Das technische Konzept nennt einen Befehl /attesta verzicht, die Anforderungsliste (REQ-Attesta-Zyklus.md) definiert ihn nicht."].join("\n");
 }
+function zeileQuartalszaehler(notfaelle, jetzt) {
+  const jahr = jetzt.getUTCFullYear();
+  const quartal = Math.floor(jetzt.getUTCMonth() / 3) + 1;
+  const anzahl = zaehleJeQuartal(notfaelle, jahr, quartal);
+  const nachsatz = anzahl >= 3 ? " Ab dem dritten Notfall im Quartal ist es kein Notfall mehr." : "";
+  return `Notfaelle im laufenden Quartal (Q${quartal} ${jahr}): ${anzahl}.${nachsatz}`;
+}
 function abschnittNotfaelle(notfaelle, jetzt) {
+  const zaehler = zeileQuartalszaehler(notfaelle, jetzt);
   const offene = notfaelle.filter((notfall) => bestimmeZustand(notfall, jetzt) !== "nachdokumentiert");
   if (offene.length === 0) {
-    return ["## Notfaelle", "", "keine offenen Notfaelle"].join("\n");
+    return ["## Notfaelle", "", "keine offenen Notfaelle", "", zaehler].join("\n");
   }
   const zeilen = offene.map((notfall) => `| ${notfall.ausgerufen_von} | ${notfall.frist} | ${bestimmeZustand(notfall, jetzt)} |`);
-  return ["## Notfaelle", "", "| Ausgerufen von | Frist | Zustand |", "|---|---|---|", ...zeilen].join("\n");
+  return ["## Notfaelle", "", "| Ausgerufen von | Frist | Zustand |", "|---|---|---|", ...zeilen, "", zaehler].join("\n");
 }
 function abschnittProfil(profilBefunde) {
   if (profilBefunde.length === 0) {

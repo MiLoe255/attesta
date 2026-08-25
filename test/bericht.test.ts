@@ -74,3 +74,44 @@ test("Profilbefunde erscheinen je Datei mit Zustand", () => {
   const inhalt = erzeugeBerichtsinhalt({ ...LEER, profilBefunde: [{ dateiname: "wortlisten.yaml", zustand: "abgewichen" }] });
   assert.match(inhalt, /\| wortlisten\.yaml \| abgewichen \|/);
 });
+
+test("REQ-22 Abnahme 3: der Zaehler je Quartal erscheint im Bericht", () => {
+  const notfaelle = [
+    erzeugeNotfall({ ausgerufenVon: "a", ausgerufenAm: new Date("2026-08-01T00:00:00.000Z"), pullRequest: 1 }),
+    erzeugeNotfall({ ausgerufenVon: "b", ausgerufenAm: new Date("2026-09-01T00:00:00.000Z"), pullRequest: 2 }),
+    erzeugeNotfall({ ausgerufenVon: "c", ausgerufenAm: new Date("2026-02-01T00:00:00.000Z"), pullRequest: 3 }),
+  ];
+  const inhalt = erzeugeBerichtsinhalt({ ...LEER, notfaelle });
+  // August liegt in Q3, der Februar-Notfall zaehlt nicht mit.
+  assert.match(inhalt, /Notfaelle im laufenden Quartal \(Q3 2026\): 2\./);
+});
+
+test("REQ-22: ab dem dritten Notfall im Quartal nennt der Bericht die Schwelle", () => {
+  const notfaelle = [1, 2, 3].map((n) =>
+    erzeugeNotfall({ ausgerufenVon: `dev${n}`, ausgerufenAm: new Date("2026-08-01T00:00:00.000Z"), pullRequest: n })
+  );
+  const inhalt = erzeugeBerichtsinhalt({ ...LEER, notfaelle });
+  assert.match(inhalt, /Q3 2026\): 3\. Ab dem dritten Notfall im Quartal ist es kein Notfall mehr\./);
+});
+
+test("der Quartalszaehler erscheint auch, wenn kein Notfall offen ist", () => {
+  const inhalt = erzeugeBerichtsinhalt(LEER);
+  assert.match(inhalt, /keine offenen Notfaelle/);
+  assert.match(inhalt, /Notfaelle im laufenden Quartal \(Q3 2026\): 0\./);
+});
+
+test("REQ-30 GR-9.5: ohne Vorschlaege weist der Bericht die Uebernahmequote als nicht bestimmbar aus", () => {
+  const ursachen = [erzeugeUrsachendatei({ vorgang: "pr-1", wert: "klarheit", zeitpunkt: new Date(), gesetztVon: "a" })];
+  const inhalt = erzeugeBerichtsinhalt({ ...LEER, ursachen });
+  assert.match(inhalt, /Uebernahmequote: nicht bestimmbar/);
+});
+
+test("REQ-30 GR-9.5: mit Vorschlaegen weist der Bericht Quote und Nenner aus", () => {
+  const basis = { vorgang: "pr-1", zeitpunkt: new Date(), gesetztVon: "a" } as const;
+  const ursachen = [
+    erzeugeUrsachendatei({ ...basis, wert: "klarheit", vorschlag: "klarheit" }),
+    erzeugeUrsachendatei({ ...basis, wert: "kontrolle", vorschlag: "klarheit" }),
+  ];
+  const inhalt = erzeugeBerichtsinhalt({ ...LEER, ursachen });
+  assert.match(inhalt, /Uebernahmequote: 50 Prozent \(Nenner 2\)\. Beobachtung, keine Zielgroesse\./);
+});
