@@ -6,10 +6,26 @@ const ALLES_ERFUELLT: StufenBedingungen = {
   stufe1: { profilVorhanden: true, issueFormularVorhanden: true },
   stufe2: { pruefungenVerbindlich: true, vierAugenBelegt: true, keinSelbstMerge: true },
   stufe3: { leitplankenMaschinenlesbar: true, gate3Durchlaufen: true },
+  stufe4: { historieNachgewiesen: true },
 };
 
-test("REQ-32 GR-10.1: alle Bedingungen erfuellt ergibt Stufe 3", () => {
-  assert.equal(bestimmeDelegationsreife(ALLES_ERFUELLT).stufe, 3);
+test("REQ-32 GR-10.1: alle Bedingungen erfuellt ergibt Stufe 4", () => {
+  assert.equal(bestimmeDelegationsreife(ALLES_ERFUELLT).stufe, 4);
+});
+
+test("D3-26: ohne belegte Historie bleibt es bei Stufe 3", () => {
+  const ohneHistorie: StufenBedingungen = { ...ALLES_ERFUELLT, stufe4: { historieNachgewiesen: false } };
+  const ergebnis = bestimmeDelegationsreife(ohneHistorie);
+  assert.equal(ergebnis.stufe, 3);
+  assert.ok(ergebnis.fehlend.some((f) => f.includes("belegte Historie")));
+});
+
+test("D3-26: eine belegte Historie hebt eine fehlende Stufe-3-Bedingung nicht auf", () => {
+  const ohneGate3: StufenBedingungen = {
+    ...ALLES_ERFUELLT,
+    stufe3: { leitplankenMaschinenlesbar: true, gate3Durchlaufen: false },
+  };
+  assert.equal(bestimmeDelegationsreife(ohneGate3).stufe, 2);
 });
 
 test("REQ-32: Reife folgt der schwaechsten erfuellten Bedingung, eine teilweise erfuellte Stufe zaehlt nicht", () => {
@@ -29,10 +45,11 @@ test("Fehlerverhalten: ohne jede Bedingung bleibt die Stufe bei eins, nie null",
     stufe1: { profilVorhanden: false, issueFormularVorhanden: false },
     stufe2: { pruefungenVerbindlich: false, vierAugenBelegt: false, keinSelbstMerge: false },
     stufe3: { leitplankenMaschinenlesbar: false, gate3Durchlaufen: false },
+    stufe4: { historieNachgewiesen: false },
   };
   const ergebnis = bestimmeDelegationsreife(nichts);
   assert.equal(ergebnis.stufe, 1);
-  assert.equal(ergebnis.fehlend.length, 7);
+  assert.equal(ergebnis.fehlend.length, 8);
 });
 
 test("minimumSStufe liefert die niedrigere Stufe", () => {

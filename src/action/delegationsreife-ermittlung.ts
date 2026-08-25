@@ -10,6 +10,10 @@
  */
 import type { StufenBedingungen } from "../gemeinsam/delegationsreife";
 import { GATE3_PFAD } from "./gate3";
+import { ladeYamlDateien } from "./verzeichnislistung";
+import { REIFE_HISTORIE } from "../gemeinsam/delegationsreife.generated";
+import type { Notfall } from "./notfall";
+import type { Ursachendatei } from "./ursachendatei";
 
 export interface ErmittlungsZiel {
   owner: string;
@@ -63,10 +67,39 @@ async function ermittleStufe1(client: ErmittlungsClient, ziel: ErmittlungsZiel):
  * Verlangt fuer jede Bedingung, dass ausnahmslos alle Stichproben sie
  * erfuellen; bei zu wenig Historie gilt die Bedingung als nicht belegt.
  */
-async function ermittleStufe2(client: ErmittlungsClient, ziel: ErmittlungsZiel): Promise<StufenBedingungen["stufe2"]> {
+async function holeGemergteNummern(client: ErmittlungsClient, ziel: ErmittlungsZiel): Promise<number[]> {
   const { data: liste } = await client.rest.pulls.list({ owner: ziel.owner, repo: ziel.repo, state: "closed", per_page: STICHPROBENGROESSE, sort: "updated", direction: "desc" });
-  const gemergteNummern = liste.filter((pr) => pr.merged_at).map((pr) => pr.number);
+  return liste.filter((pr) => pr.merged_at).map((pr) => pr.number);
+}
 
+/**
+ * Stufe 4, D3-26 entschieden am 25.08.2026: eine feste Zahl gemergter
+ * Arbeitspakete in Folge ohne Notfall und ohne Ursachencode
+ * werkzeugfehler. Reicht die Historie nicht aus, gilt die Bedingung als
+ * nicht belegt, nicht als erfuellt.
+ */
+async function ermittleStufe4(client: ErmittlungsClient, ziel: ErmittlungsZiel, gemergteNummern: number[]): Promise<StufenBedingungen["stufe4"]> {
+  const benoetigt = REIFE_HISTORIE.arbeitspakete_in_folge;
+  if (gemergteNummern.length < benoetigt) return { historieNachgewiesen: false };
+  const betrachtet = gemergteNummern.slice(0, benoetigt);
+
+  const [notfaelle, ursachen] = await Promise.all([
+    ladeYamlDateien<Notfall>(client, ziel, "attesta/notfaelle"),
+    ladeYamlDateien<Ursachendatei>(client, ziel, "attesta/ursachen"),
+  ]);
+
+  const mitNotfall = new Set(notfaelle.map((notfall) => notfall.pull_request));
+  const mitWerkzeugfehler = new Set(
+    ursachen.filter((u) => u.wert === "werkzeugfehler").map((u) => Number(u.vorgang.replace(/^pr-/, "")))
+  );
+
+  const sauber = betrachtet.every(
+    (nummer) => (!REIFE_HISTORIE.ohne_notfall || !mitNotfall.has(nummer)) && (!REIFE_HISTORIE.ohne_werkzeugfehler || !mitWerkzeugfehler.has(nummer))
+  );
+  return { historieNachgewiesen: sauber };
+}
+
+async function ermittleStufe2(client: ErmittlungsClient, ziel: ErmittlungsZiel, gemergteNummern: number[]): Promise<StufenBedingungen["stufe2"]> {
   if (gemergteNummern.length < MINDESTANZAHL_FUER_INDIZ) {
     return { pruefungenVerbindlich: false, vierAugenBelegt: false, keinSelbstMerge: false };
   }
@@ -121,6 +154,12 @@ async function ermittleStufe3(client: ErmittlungsClient, ziel: ErmittlungsZiel):
 }
 
 export async function ermittleStufenBedingungen(client: ErmittlungsClient, ziel: ErmittlungsZiel): Promise<StufenBedingungen> {
-  const [stufe1, stufe2, stufe3] = await Promise.all([ermittleStufe1(client, ziel), ermittleStufe2(client, ziel), ermittleStufe3(client, ziel)]);
-  return { stufe1, stufe2, stufe3 };
+  const gemergteNummern = await holeGemergteNummern(client, ziel);
+  const [stufe1, stufe2, stufe3, stufe4] = await Promise.all([
+    ermittleStufe1(client, ziel),
+    ermittleStufe2(client, ziel, gemergteNummern),
+    ermittleStufe3(client, ziel),
+    ermittleStufe4(client, ziel, gemergteNummern),
+  ]);
+  return { stufe1, stufe2, stufe3, stufe4 };
 }

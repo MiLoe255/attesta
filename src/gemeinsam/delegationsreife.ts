@@ -5,15 +5,16 @@
  * Bedingungen selbst (Repository-Zugriffe) steht in
  * src/action/delegationsreife-ermittlung.ts.
  *
- * Stufe 4 wird nicht ermittelt (D3-26, gesperrt): die Bedingung ist ein
- * Vorschlag [A] und aus dem Regelset nicht ableitbar, REQ-33 verlangt
- * ausdruecklich nur die Stufen eins bis drei zu bauen. Die
- * Minimum-Berechnung (bestimmeZulaessigeDelegation) bleibt trotzdem
- * generisch bis S4, weil REQ-33 Abnahme 2 ("Reife vier und K3") genau
- * diesen Fall als Beispiel nennt und vorwaerts-kompatibel bleiben soll,
- * sobald D3-26 entschieden ist.
+ * Stufe 4 ist seit dem 25.08.2026 entschieden (vorher D3-26 gesperrt):
+ * sie verlangt zusaetzlich zu Stufe 3 eine belegte Historie, naemlich
+ * eine feste Zahl gemergter Arbeitspakete in Folge ohne Notfall und ohne
+ * Ursachencode werkzeugfehler. Die Zahl steht in
+ * rules/delegationsreife.yaml und ist gesetzt, nicht gemessen: sie
+ * gehoert nach dem ersten Pilotbetrieb kalibriert.
  */
-export type DelegationsreifeStufe = 1 | 2 | 3;
+import { REIFE_HISTORIE } from "./delegationsreife.generated";
+
+export type DelegationsreifeStufe = 1 | 2 | 3 | 4;
 export type SStufe = "S1" | "S2" | "S3" | "S4";
 
 const S_RANG: Record<SStufe, number> = { S1: 1, S2: 2, S3: 3, S4: 4 };
@@ -26,6 +27,7 @@ export interface StufenBedingungen {
   stufe1: { profilVorhanden: boolean; issueFormularVorhanden: boolean };
   stufe2: { pruefungenVerbindlich: boolean; vierAugenBelegt: boolean; keinSelbstMerge: boolean };
   stufe3: { leitplankenMaschinenlesbar: boolean; gate3Durchlaufen: boolean };
+  stufe4: { historieNachgewiesen: boolean };
 }
 
 export interface DelegationsreifeErgebnis {
@@ -58,7 +60,12 @@ export function bestimmeDelegationsreife(b: StufenBedingungen): Delegationsreife
   if (!b.stufe3.gate3Durchlaufen) fehlend.push("durchlaufenes Gate 3 (Selbstauskunft ueber /attesta gate3 bestanden <Begruendung>)");
   const stufe3 = stufe2 && b.stufe3.leitplankenMaschinenlesbar && b.stufe3.gate3Durchlaufen;
 
-  const stufe: DelegationsreifeStufe = stufe3 ? 3 : stufe2 ? 2 : 1;
+  if (!b.stufe4.historieNachgewiesen) {
+    fehlend.push(`belegte Historie (${REIFE_HISTORIE.arbeitspakete_in_folge} Arbeitspakete in Folge ohne Notfall und ohne Werkzeugfehler)`);
+  }
+  const stufe4 = stufe3 && b.stufe4.historieNachgewiesen;
+
+  const stufe: DelegationsreifeStufe = stufe4 ? 4 : stufe3 ? 3 : stufe2 ? 2 : 1;
   return { stufe, fehlend };
 }
 
@@ -71,7 +78,7 @@ export interface DelegationsPruefung {
 }
 
 /** REQ-33 GR-10.3: das Minimum aus Stufe und Matrixobergrenze. Reife 1 bis 3 traegt bis S1 bis S3, siehe Stufenmodell. */
-export function bestimmeZulaessigeDelegation(angefragt: SStufe, reife: DelegationsreifeStufe | 4, matrixObergrenze: SStufe): DelegationsPruefung {
+export function bestimmeZulaessigeDelegation(angefragt: SStufe, reife: DelegationsreifeStufe, matrixObergrenze: SStufe): DelegationsPruefung {
   const reifeGrenze = (`S${reife}`) as SStufe;
   const zulaessig = minimumSStufe(reifeGrenze, matrixObergrenze);
   return { angefragt, reifeGrenze, matrixGrenze: matrixObergrenze, zulaessig, akzeptiert: S_RANG[angefragt] <= S_RANG[zulaessig] };

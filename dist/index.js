@@ -26955,6 +26955,7 @@ var require_regelsatz = __commonJS({
     exports2.ladeUnschaerfe = ladeUnschaerfe2;
     exports2.ladeUrsachen = ladeUrsachen;
     exports2.ladeTechnologien = ladeTechnologien2;
+    exports2.ladeDelegationsreife = ladeDelegationsreife2;
     var node_fs_1 = require("node:fs");
     var node_path_1 = require("node:path");
     var js_yaml_1 = require_js_yaml();
@@ -27130,6 +27131,23 @@ var require_regelsatz = __commonJS({
         version: (0, fehler_1.pruefePflichtfeld)(daten.version, "technologien.yaml", "version"),
         quelle: (0, fehler_1.pruefePflichtfeld)(daten.quelle, "technologien.yaml", "quelle"),
         woerter
+      };
+    }
+    function ladeDelegationsreife2() {
+      const daten = ladeYaml("delegationsreife.yaml");
+      const stufen = (0, fehler_1.pruefePflichtfeld)(daten.stufen, "delegationsreife.yaml", "stufen");
+      for (const stufe of ["1", "2", "3", "4"]) {
+        (0, fehler_1.pruefePflichtfeld)(stufen[stufe], "delegationsreife.yaml", `stufen.${stufe}`);
+      }
+      const historie = (0, fehler_1.pruefePflichtfeld)(daten.historie, "delegationsreife.yaml", "historie");
+      if (typeof historie.arbeitspakete_in_folge !== "number" || historie.arbeitspakete_in_folge < 1) {
+        throw new fehler_1.RegelsatzFehler("delegationsreife.yaml", "historie.arbeitspakete_in_folge", "muss eine Zahl ab eins sein");
+      }
+      return {
+        version: (0, fehler_1.pruefePflichtfeld)(daten.version, "delegationsreife.yaml", "version"),
+        quelle: (0, fehler_1.pruefePflichtfeld)(daten.quelle, "delegationsreife.yaml", "quelle"),
+        stufen,
+        historie
       };
     }
   }
@@ -31176,6 +31194,13 @@ function formatiereBefund(felder) {
   return felder.fundort ? `${basis} (${felder.fundort})` : basis;
 }
 
+// src/gemeinsam/delegationsreife.generated.ts
+var REIFE_HISTORIE = {
+  "arbeitspakete_in_folge": 10,
+  "ohne_notfall": true,
+  "ohne_werkzeugfehler": true
+};
+
 // src/gemeinsam/delegationsreife.ts
 var S_RANG = { S1: 1, S2: 2, S3: 3, S4: 4 };
 function minimumSStufe(a, b) {
@@ -31193,7 +31218,11 @@ function bestimmeDelegationsreife(b) {
   if (!b.stufe3.leitplankenMaschinenlesbar) fehlend.push("maschinenlesbare Leitplanken");
   if (!b.stufe3.gate3Durchlaufen) fehlend.push("durchlaufenes Gate 3 (Selbstauskunft ueber /attesta gate3 bestanden <Begruendung>)");
   const stufe3 = stufe2 && b.stufe3.leitplankenMaschinenlesbar && b.stufe3.gate3Durchlaufen;
-  const stufe = stufe3 ? 3 : stufe2 ? 2 : 1;
+  if (!b.stufe4.historieNachgewiesen) {
+    fehlend.push(`belegte Historie (${REIFE_HISTORIE.arbeitspakete_in_folge} Arbeitspakete in Folge ohne Notfall und ohne Werkzeugfehler)`);
+  }
+  const stufe4 = stufe3 && b.stufe4.historieNachgewiesen;
+  const stufe = stufe4 ? 4 : stufe3 ? 3 : stufe2 ? 2 : 1;
   return { stufe, fehlend };
 }
 function bestimmeZulaessigeDelegation(angefragt, reife, matrixObergrenze2) {
@@ -31294,9 +31323,28 @@ async function ermittleStufe1(client, ziel) {
   ]);
   return { profilVorhanden, issueFormularVorhanden };
 }
-async function ermittleStufe2(client, ziel) {
+async function holeGemergteNummern(client, ziel) {
   const { data: liste } = await client.rest.pulls.list({ owner: ziel.owner, repo: ziel.repo, state: "closed", per_page: STICHPROBENGROESSE, sort: "updated", direction: "desc" });
-  const gemergteNummern = liste.filter((pr) => pr.merged_at).map((pr) => pr.number);
+  return liste.filter((pr) => pr.merged_at).map((pr) => pr.number);
+}
+async function ermittleStufe4(client, ziel, gemergteNummern) {
+  const benoetigt = REIFE_HISTORIE.arbeitspakete_in_folge;
+  if (gemergteNummern.length < benoetigt) return { historieNachgewiesen: false };
+  const betrachtet = gemergteNummern.slice(0, benoetigt);
+  const [notfaelle, ursachen] = await Promise.all([
+    ladeYamlDateien(client, ziel, "attesta/notfaelle"),
+    ladeYamlDateien(client, ziel, "attesta/ursachen")
+  ]);
+  const mitNotfall = new Set(notfaelle.map((notfall) => notfall.pull_request));
+  const mitWerkzeugfehler = new Set(
+    ursachen.filter((u) => u.wert === "werkzeugfehler").map((u) => Number(u.vorgang.replace(/^pr-/, "")))
+  );
+  const sauber = betrachtet.every(
+    (nummer) => (!REIFE_HISTORIE.ohne_notfall || !mitNotfall.has(nummer)) && (!REIFE_HISTORIE.ohne_werkzeugfehler || !mitWerkzeugfehler.has(nummer))
+  );
+  return { historieNachgewiesen: sauber };
+}
+async function ermittleStufe2(client, ziel, gemergteNummern) {
   if (gemergteNummern.length < MINDESTANZAHL_FUER_INDIZ) {
     return { pruefungenVerbindlich: false, vierAugenBelegt: false, keinSelbstMerge: false };
   }
@@ -31339,8 +31387,14 @@ async function ermittleStufe3(client, ziel) {
   return { leitplankenMaschinenlesbar, gate3Durchlaufen };
 }
 async function ermittleStufenBedingungen(client, ziel) {
-  const [stufe1, stufe2, stufe3] = await Promise.all([ermittleStufe1(client, ziel), ermittleStufe2(client, ziel), ermittleStufe3(client, ziel)]);
-  return { stufe1, stufe2, stufe3 };
+  const gemergteNummern = await holeGemergteNummern(client, ziel);
+  const [stufe1, stufe2, stufe3, stufe4] = await Promise.all([
+    ermittleStufe1(client, ziel),
+    ermittleStufe2(client, ziel, gemergteNummern),
+    ermittleStufe3(client, ziel),
+    ermittleStufe4(client, ziel, gemergteNummern)
+  ]);
+  return { stufe1, stufe2, stufe3, stufe4 };
 }
 
 // src/action/gate3speicher.ts

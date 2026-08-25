@@ -5,11 +5,11 @@
  * kennzahlen ausdruecklich, aber die Datenquellen liegen ohnehin lokal
  * im Repository, ein Netzaufruf waere unnoetig.
  *
- * Stufe 2 der Delegationsreife (Vier-Augen-Freigabe, kein Selbst-Merge,
- * verbindliche Pruefungen) ist PR-Historie ueber die GitHub-API und
- * lokal grundsaetzlich nicht ermittelbar. Sie bleibt hier immer
- * unerfuellt, die ermittelte Reife deckelt sich dadurch praktisch bei
- * Stufe 1, ausser die Action selbst berichtet spaeter einen echten Wert.
+ * Stufe 2 und Stufe 4 der Delegationsreife stuetzen sich auf die
+ * PR-Historie ueber die GitHub-API und sind lokal grundsaetzlich nicht
+ * ermittelbar. Beide bleiben hier unerfuellt, die ermittelte Reife
+ * deckelt sich dadurch praktisch bei Stufe 1, ausser die Action selbst
+ * berichtet spaeter einen echten Wert.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -54,5 +54,6 @@ export function ermittleStufenBedingungenLokal(wurzel: string): StufenBedingunge
       leitplankenMaschinenlesbar: existiert(".github/workflows") && (existiert("CLAUDE.md") || existiert("AGENTS.md")),
       gate3Durchlaufen: existiert("attesta/gates/p3-bestanden.yaml"),
     },
+    stufe4: { historieNachgewiesen: false },
   };
 }
