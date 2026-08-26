@@ -50,6 +50,7 @@ import { PROFILBASIS } from "../gemeinsam/profilbasis.generated";
 import { vergleicheProfilVerzeichnis, type ProfilBefund } from "../gemeinsam/profilvergleich";
 import { pruefeAnforderungMitRegelsatz } from "../gemeinsam/guete";
 import { leseEigeneRollen } from "../gemeinsam/eigene-rollen";
+import { erhebeErgaenzungen, type Ergaenzungsbefund } from "../gemeinsam/ergaenzungen";
 import { formatiereBefund } from "../gemeinsam/meldung";
 import { bestimmeDelegationsreife, bestimmeZulaessigeDelegation, formatierePruefung } from "../gemeinsam/delegationsreife";
 import { kritikalitaetMitRueckfall, leseEinstufung, matrixObergrenze } from "./arbeitspaket";
@@ -367,14 +368,16 @@ async function behandleMonatsbericht(octokit: Octokit, owner: string, repo: stri
   ]);
 
   let profilBefunde: ProfilBefund[] = [];
+  let ergaenzungen: Ergaenzungsbefund[] = [];
   try {
     const wurzel = arbeitsverzeichnis();
     profilBefunde = vergleicheProfilVerzeichnis(`${wurzel}/attesta/profil`, `${wurzel}/attesta/profil.lock`, PROFILBASIS);
+    ergaenzungen = erhebeErgaenzungen(wurzel);
   } catch (e) {
     core.warning(`Profilvergleich fuer den Bericht nicht moeglich: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  const inhalt = erzeugeBerichtsinhalt({ monat, ursachen, notfaelle, profilBefunde, jetzt: new Date() });
+  const inhalt = erzeugeBerichtsinhalt({ monat, ursachen, notfaelle, profilBefunde, ergaenzungen, jetzt: new Date() });
   const ergebnis = await stelleBerichtBereit(berichtClient, { owner, repo, standardBranch }, monat, inhalt);
   core.info(`Monatsbericht ${ergebnis.neu ? "erstellt" : "aktualisiert"}: PR #${ergebnis.prNummer} auf ${ergebnis.branch}`);
 }
