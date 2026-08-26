@@ -15,12 +15,15 @@ import { bestimmeZustand, zaehleJeQuartal, type Notfall } from "./notfall";
 import { berechneUebernahmequote, type Ursachendatei } from "./ursachendatei";
 import { NOTFALL_REGELN } from "../gemeinsam/notfall.generated";
 import type { ProfilBefund } from "../gemeinsam/profilvergleich";
+import type { Ergaenzungsbefund } from "../gemeinsam/ergaenzungen";
 
 export interface BerichtDaten {
   monat: string;
   ursachen: Ursachendatei[];
   notfaelle: Notfall[];
   profilBefunde: ProfilBefund[];
+  /** Ergaenzungsdateien ausserhalb des Profils. Fehlt das Feld, wurde nicht erhoben. */
+  ergaenzungen?: Ergaenzungsbefund[];
   jetzt: Date;
 }
 
@@ -96,12 +99,38 @@ function abschnittNotfaelle(notfaelle: Notfall[], jetzt: Date): string {
   return ["## Notfaelle", "", "| Ausgerufen von | Frist | Zustand |", "|---|---|---|", ...zeilen, "", zaehler].join("\n");
 }
 
-function abschnittProfil(profilBefunde: ProfilBefund[]): string {
+/**
+ * Ergaenzungen stehen unter dem Profil und nicht in einem eigenen Abschnitt: GR-12.1
+ * verlangt sieben Abschnitte in fester Reihenfolge. Inhaltlich gehoeren sie ohnehin
+ * hierher, weil sie zusammen mit dem Profil das Bild ergeben, gegen das gearbeitet wird.
+ */
+function abschnittErgaenzungen(ergaenzungen: Ergaenzungsbefund[] | undefined): string[] {
+  if (ergaenzungen === undefined) return [];
+  if (ergaenzungen.length === 0) {
+    return ["", "Ergaenzungen ausserhalb des Profils: keine."];
+  }
+  const zeilen = ergaenzungen.map(
+    (e) => `| ${e.dateiname} | ${e.zustand} | ${e.eintraege} |`,
+  );
+  return [
+    "",
+    "Ergaenzungen ausserhalb des Profils. Sie sind kein Teil des Profils und werden nicht",
+    "gegen die Basis geprueft, GR-3.2 bleibt unangetastet. Sie stehen hier, damit sichtbar",
+    "ist, was zusaetzlich zum Standard gilt.",
+    "",
+    "| Datei | Zustand | Eintraege |",
+    "|---|---|---|",
+    ...zeilen,
+  ];
+}
+
+function abschnittProfil(profilBefunde: ProfilBefund[], ergaenzungen?: Ergaenzungsbefund[]): string {
+  const ergaenzt = abschnittErgaenzungen(ergaenzungen);
   if (profilBefunde.length === 0) {
-    return ["## Profil", "", "kein Profil installiert"].join("\n");
+    return ["## Profil", "", "kein Profil installiert", ...ergaenzt].join("\n");
   }
   const zeilen = profilBefunde.map((befund) => `| ${befund.dateiname} | ${befund.zustand} |`);
-  return ["## Profil", "", "| Datei | Zustand |", "|---|---|", ...zeilen].join("\n");
+  return ["## Profil", "", "| Datei | Zustand |", "|---|---|", ...zeilen, ...ergaenzt].join("\n");
 }
 
 function abschnittWasDarausFolgt(): string {
@@ -122,7 +151,7 @@ export function erzeugeBerichtsinhalt(daten: BerichtDaten): string {
     "",
     abschnittNotfaelle(daten.notfaelle, daten.jetzt),
     "",
-    abschnittProfil(daten.profilBefunde),
+    abschnittProfil(daten.profilBefunde, daten.ergaenzungen),
     "",
     abschnittWasDarausFolgt(),
     "",
