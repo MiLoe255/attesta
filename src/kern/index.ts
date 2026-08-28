@@ -27,8 +27,8 @@ export { pruefeAnforderung, pruefeAnforderungMitRegelsatz } from "../gemeinsam/g
 export type { GueteErgebnis, GueteRegelsatz, PruefungsBefund, PruefungsZustand } from "../gemeinsam/guete";
 
 // Nachweisgrad als Minimum dreier Teilwerte, GR-8.6.
-export { berechneAnforderungsguete, berechneNachweisgrad, formatiereNachweisgrad, NACHWEISGRAD_FORMELVERSION } from "../gemeinsam/nachweisgrad";
-export type { Nachweisgrad, Teilwert } from "../gemeinsam/nachweisgrad";
+export { berechneAnforderungsguete, berechneBelegfrische, berechneKettendeckung, berechneNachweisgrad, formatiereNachweisgrad, istFrisch, istGedeckt, NACHWEISGRAD_FORMELVERSION } from "../gemeinsam/nachweisgrad";
+export type { Belegbefund, Kettenbefund, Kettenknoten, Nachweisgrad, Teilwert } from "../gemeinsam/nachweisgrad";
 
 // Delegationsreife und zulaessige Stufe.
 export { bestimmeDelegationsreife, bestimmeZulaessigeDelegation, formatierePruefung, minimumSStufe } from "../gemeinsam/delegationsreife";
