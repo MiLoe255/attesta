@@ -35,12 +35,11 @@ export { bestimmeDelegationsreife, bestimmeZulaessigeDelegation, formatierePruef
 export type { DelegationsPruefung, DelegationsreifeErgebnis, DelegationsreifeStufe, SStufe, StufenBedingungen } from "../gemeinsam/delegationsreife";
 
 /*
- * Einstufung und Matrixobergrenze liegen heute in `action/arbeitspaket.ts`. Der
- * Inhalt ist rein, die Ablage ist es nicht: eine Bibliothek sollte nicht in die
- * Action greifen. Ein Verschieben nach `gemeinsam/` beruehrt Action-Code und Tests
- * und gehoert deshalb in ein eigenes Arbeitspaket, nicht in dieses. Bis dahin
- * dieser Wiederausfuhr mit Vermerk, damit die Abhaengigkeit sichtbar bleibt statt
- * sich zu setzen.
+ * Einstufung und Matrixobergrenze lagen bis zum 04.09.2026 in
+ * `action/arbeitspaket.ts`. Der Inhalt war rein, die Ablage nicht: Der Kern griff
+ * in die Action, also die Bibliothek in ihren Aufrufer. Das Verschieben nach
+ * `gemeinsam/` ist das Arbeitspaket, das der vorherige Vermerk hier angekuendigt
+ * hat.
  */
-export { kritikalitaetMitRueckfall, leseEinstufung, matrixObergrenze } from "../action/arbeitspaket";
-export type { Einstufung, KStufe } from "../action/arbeitspaket";
+export { kritikalitaetMitRueckfall, leseEinstufung, matrixObergrenze } from "../gemeinsam/arbeitspaket";
+export type { Einstufung, KStufe } from "../gemeinsam/arbeitspaket";

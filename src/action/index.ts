@@ -53,7 +53,7 @@ import { leseEigeneRollen } from "../gemeinsam/eigene-rollen";
 import { erhebeErgaenzungen, type Ergaenzungsbefund } from "../gemeinsam/ergaenzungen";
 import { formatiereBefund } from "../gemeinsam/meldung";
 import { bestimmeDelegationsreife, bestimmeZulaessigeDelegation, formatierePruefung } from "../gemeinsam/delegationsreife";
-import { kritikalitaetMitRueckfall, leseEinstufung, matrixObergrenze } from "./arbeitspaket";
+import { kritikalitaetMitRueckfall, leseEinstufung, matrixObergrenze } from "../gemeinsam/arbeitspaket";
 import { berechneAnforderungsguete, berechneNachweisgrad, formatiereNachweisgrad } from "../gemeinsam/nachweisgrad";
 import { ermittleStufenBedingungen } from "./delegationsreife-ermittlung";
 import { erzeugeGate3Attest, GATE3_PFAD, istGate3Befehl, leseBegruendung } from "./gate3";

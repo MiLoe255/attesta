@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { kritikalitaetMitRueckfall, leseEinstufung, matrixObergrenze } from "../src/action/arbeitspaket";
+import { kritikalitaetMitRueckfall, leseEinstufung, matrixObergrenze } from "../src/gemeinsam/arbeitspaket";
 import { bestimmeZulaessigeDelegation, formatierePruefung } from "../src/gemeinsam/delegationsreife";
 
 const FORMULARTEXT = `### Kritikalitaet

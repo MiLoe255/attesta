@@ -5,8 +5,8 @@
  * Kennung am Wortanfang, damit ein von Hand geschriebener Text mit
  * derselben Kennung ebenfalls erkannt wird.
  */
-import { KS_MAX_DELEGATION } from "../gemeinsam/ksmatrix.generated";
-import type { SStufe } from "../gemeinsam/delegationsreife";
+import { KS_MAX_DELEGATION } from "./ksmatrix.generated";
+import type { SStufe } from "./delegationsreife";
 
 export type KStufe = keyof typeof KS_MAX_DELEGATION;
 
