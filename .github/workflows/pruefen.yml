@@ -1,0 +1,67 @@
+# Prueflauf fuer den Attesta Zyklus.
+#
+# Anlass: Bis zum 05.09.2026 hatte dieses Repositorium keine Pipeline. Die 206 Tests
+# existierten und liefen nirgends automatisch. Nach der harten Regel des Verfahrens gilt
+# ohne maschinenlesbare Leitplanken S2 als Obergrenze fuer jeden Arbeitstyp, unabhaengig
+# von der Kritikalitaet. Das betraf ausgerechnet das oeffentliche Repositorium, das die
+# Action und die Konsole ausliefert.
+#
+# Vier Pruefungen. Die letzten beiden fangen den Fehler, der bei einer ausgelieferten
+# Action typisch ist: Die Quelle aendert sich, das ausgelieferte Buendel nicht, und beim
+# Anwender laeuft weiter der alte Stand.
+
+name: Pruefen
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      # npm ci statt npm install: Es installiert genau den Stand aus package-lock.json.
+      # Ohne das waeren die beiden Abgleiche unten nicht aussagekraeftig, weil eine neue
+      # esbuild-Fassung das Buendel anders schreiben kann, ohne dass jemand etwas geaendert
+      # hat. Das waere ein roter Lauf ohne Befund, und der erzieht zum Wegsehen.
+      - name: Abhaengigkeiten
+        run: npm ci
+
+      - name: Typen
+        run: npx tsc -p . --noEmit
+
+      - name: Tests
+        run: npm test
+
+      # Die Seiten unter docs/ und die erzeugten Regeldateien werden aus rules/ erzeugt.
+      # Erzeugt und nicht getippt heisst: Sie koennen vom Regelsatz nicht abweichen. Diese
+      # Zusage haelt nur, solange sie geprueft wird.
+      - name: Erzeugte Dateien sind aktuell
+        run: |
+          npm run generate
+          git diff --exit-code || {
+            echo "Erzeugte Dateien weichen vom Regelsatz ab. npm run generate laufen lassen und mitcommitten."
+            exit 1
+          }
+
+      # dist/ ist der Teil, den GitHub bei einem Action-Lauf tatsaechlich ausfuehrt. Er
+      # liegt im Repositorium und wird von Hand gebaut. Am 05.09.2026 wich er vom
+      # Quellstand ab.
+      - name: Das ausgelieferte Buendel passt zur Quelle
+        run: |
+          npm run build
+          git diff --exit-code -- dist || {
+            echo "dist/ passt nicht zur Quelle. npm run build laufen lassen und mitcommitten."
+            exit 1
+          }
