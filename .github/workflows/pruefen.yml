@@ -8,7 +8,7 @@
 #
 # Vier Pruefungen. Die letzten beiden fangen den Fehler, der bei einer ausgelieferten
 # Action typisch ist: Die Quelle aendert sich, das ausgelieferte Buendel nicht, und beim
-# Anwender laeuft weiter der alte Stand.
+# Anwender laeuft weiter der alte Stand. Genau der lag am 05.09.2026 vor.
 
 name: Pruefen
 
@@ -24,62 +24,84 @@ jobs:
   pruefen:
     runs-on: ubuntu-latest
     steps:
+      # Zuerst und ohne Checkout, damit die Meldung die Ursache nennt und nicht ein
+      # scheiternder Checkout mit "repository not found".
+      - name: Zugang zum Regelsatzrepositorium
+        run: |
+          if [ -z "${{ secrets.ATTESTA_CORE_TOKEN }}" ]; then
+            echo "::error::Das Secret ATTESTA_CORE_TOKEN fehlt. attesta-core ist privat und wird hier ausgecheckt, nicht als Paket bezogen. Anzulegen unter Settings, Secrets and variables, Actions: ein Token mit Lesezugriff auf MiLoe255/attesta-core. Ohne das ist der Regelsatz nicht aufloesbar und geprueft wird nichts Wesentliches."
+            exit 1
+          fi
+
+      # Beide Repositorien liegen nebeneinander, wie auf einem Arbeitsplatz. Das ist
+      # kein Zufall: package-lock.json fuehrt den Regelsatz als lokalen Verweis
+      # "../attesta-core". Ein Checkout an anderer Stelle wuerde npm ci brechen.
+      #
+      # ADR-003 sagt zum npm-Link: "Das funktioniert auf einem Arbeitsplatz und nicht in
+      # der Pruefpipeline." Der Weg hier macht die Pipeline zum Arbeitsplatz, statt das
+      # Paket zu veroeffentlichen. Das ist die kleinere Aenderung und haelt den
+      # Regelsatz privat.
       - uses: actions/checkout@v4
+        with:
+          path: attesta
+
+      - uses: actions/checkout@v4
+        with:
+          repository: MiLoe255/attesta-core
+          token: ${{ secrets.ATTESTA_CORE_TOKEN }}
+          path: attesta-core
 
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
-
-      # Der Regelsatz liegt in @miloe255/attesta-core, einem privaten Paket. Auf einem
-      # Arbeitsplatz ist es ein Symlink ins Nachbarverzeichnis, in einer Pipeline nicht.
-      # ADR-003 benennt genau das: "Das funktioniert auf einem Arbeitsplatz und nicht in
-      # der Pruefpipeline." Bis zum 05.09.2026 war die Folge unsichtbar, weil es keine
-      # Pipeline gab.
-      #
-      # Der Abbruch steht vor npm ci, damit die Meldung die Ursache nennt und nicht
-      # sieben Folgefehler ueber fehlende Typen.
-      - name: Zugang zum privaten Regelsatzpaket
-        run: |
-          if [ -z "${{ secrets.ATTESTA_CORE_TOKEN }}" ]; then
-            echo "::error::Das Secret ATTESTA_CORE_TOKEN fehlt. Ohne es ist @miloe255/attesta-core aus dieser Pipeline nicht beziehbar, und geprueft wird nichts Wesentliches. Anzulegen unter Settings, Secrets and variables, Actions: ein Token mit read:packages. Voraussetzung ist, dass attesta-core nach npm.pkg.github.com veroeffentlicht ist."
-            exit 1
-          fi
+          cache-dependency-path: attesta/package-lock.json
 
       # npm ci statt npm install: Es installiert genau den Stand aus package-lock.json.
       # Ohne das waeren die beiden Abgleiche unten nicht aussagekraeftig, weil eine neue
       # esbuild-Fassung das Buendel anders schreiben kann, ohne dass jemand etwas geaendert
       # hat. Das waere ein roter Lauf ohne Befund, und der erzieht zum Wegsehen.
+      #
+      # Der Lauf legt zugleich die Abhaengigkeiten des Regelsatzes an: Sie stehen im
+      # selben Lockfile, weil er als lokaler Verweis eingebunden ist.
       - name: Abhaengigkeiten
-        env:
-          # .npmrc loest ${GITHUB_TOKEN} auf, deshalb heisst die Variable hier so.
-          GITHUB_TOKEN: ${{ secrets.ATTESTA_CORE_TOKEN }}
+        working-directory: attesta
         run: npm ci
 
+      # attesta-core fuehrt sein dist/ nicht im Repositorium, main zeigt aber darauf.
+      # Ohne diesen Schritt ist der Regelsatz zwar da und nicht ladbar.
+      - name: Regelsatz bauen
+        working-directory: attesta-core
+        run: npm run build
+
       - name: Typen
+        working-directory: attesta
         run: npx tsc -p . --noEmit
 
       - name: Tests
+        working-directory: attesta
         run: npm test
 
-      # Die Seiten unter docs/ und die erzeugten Regeldateien werden aus rules/ erzeugt.
-      # Erzeugt und nicht getippt heisst: Sie koennen vom Regelsatz nicht abweichen. Diese
-      # Zusage haelt nur, solange sie geprueft wird.
+      # Die Seiten unter docs/ und die erzeugten Regeldateien werden aus dem Regelsatz
+      # erzeugt. Erzeugt und nicht getippt heisst: Sie koennen von ihm nicht abweichen.
+      # Diese Zusage haelt nur, solange sie geprueft wird.
       - name: Erzeugte Dateien sind aktuell
+        working-directory: attesta
         run: |
           npm run generate
           git diff --exit-code || {
-            echo "Erzeugte Dateien weichen vom Regelsatz ab. npm run generate laufen lassen und mitcommitten."
+            echo "::error::Erzeugte Dateien weichen vom Regelsatz ab. npm run generate laufen lassen und mitcommitten."
             exit 1
           }
 
       # dist/ ist der Teil, den GitHub bei einem Action-Lauf tatsaechlich ausfuehrt. Er
       # liegt im Repositorium und wird von Hand gebaut. Am 05.09.2026 wich er vom
-      # Quellstand ab.
+      # Quellstand ab: Beim Anwender lief anderer Code als der, den man liest.
       - name: Das ausgelieferte Buendel passt zur Quelle
+        working-directory: attesta
         run: |
           npm run build
           git diff --exit-code -- dist || {
-            echo "dist/ passt nicht zur Quelle. npm run build laufen lassen und mitcommitten."
+            echo "::error::dist/ passt nicht zur Quelle. npm run build laufen lassen und mitcommitten."
             exit 1
           }
