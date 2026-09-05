@@ -31,11 +31,29 @@ jobs:
           node-version: "24"
           cache: npm
 
+      # Der Regelsatz liegt in @miloe255/attesta-core, einem privaten Paket. Auf einem
+      # Arbeitsplatz ist es ein Symlink ins Nachbarverzeichnis, in einer Pipeline nicht.
+      # ADR-003 benennt genau das: "Das funktioniert auf einem Arbeitsplatz und nicht in
+      # der Pruefpipeline." Bis zum 05.09.2026 war die Folge unsichtbar, weil es keine
+      # Pipeline gab.
+      #
+      # Der Abbruch steht vor npm ci, damit die Meldung die Ursache nennt und nicht
+      # sieben Folgefehler ueber fehlende Typen.
+      - name: Zugang zum privaten Regelsatzpaket
+        run: |
+          if [ -z "${{ secrets.ATTESTA_CORE_TOKEN }}" ]; then
+            echo "::error::Das Secret ATTESTA_CORE_TOKEN fehlt. Ohne es ist @miloe255/attesta-core aus dieser Pipeline nicht beziehbar, und geprueft wird nichts Wesentliches. Anzulegen unter Settings, Secrets and variables, Actions: ein Token mit read:packages. Voraussetzung ist, dass attesta-core nach npm.pkg.github.com veroeffentlicht ist."
+            exit 1
+          fi
+
       # npm ci statt npm install: Es installiert genau den Stand aus package-lock.json.
       # Ohne das waeren die beiden Abgleiche unten nicht aussagekraeftig, weil eine neue
       # esbuild-Fassung das Buendel anders schreiben kann, ohne dass jemand etwas geaendert
       # hat. Das waere ein roter Lauf ohne Befund, und der erzieht zum Wegsehen.
       - name: Abhaengigkeiten
+        env:
+          # .npmrc loest ${GITHUB_TOKEN} auf, deshalb heisst die Variable hier so.
+          GITHUB_TOKEN: ${{ secrets.ATTESTA_CORE_TOKEN }}
         run: npm ci
 
       - name: Typen
