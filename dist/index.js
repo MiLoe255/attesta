@@ -26962,17 +26962,17 @@ var require_regelsatz = __commonJS({
     var js_yaml_1 = require_js_yaml();
     var fehler_1 = require_fehler();
     exports2.REGELSATZ_VERZEICHNIS = (0, node_path_1.join)(__dirname, "..", "rules");
-    function ladeYaml(dateiname) {
-      const pfad = (0, node_path_1.join)(exports2.REGELSATZ_VERZEICHNIS, dateiname);
+    function ladeYaml(dateiname2) {
+      const pfad = (0, node_path_1.join)(exports2.REGELSATZ_VERZEICHNIS, dateiname2);
       let inhalt;
       try {
         inhalt = (0, node_fs_1.readFileSync)(pfad, "utf-8");
       } catch {
-        throw new fehler_1.RegelsatzFehler(dateiname, "*", "ist nicht lesbar");
+        throw new fehler_1.RegelsatzFehler(dateiname2, "*", "ist nicht lesbar");
       }
       const geparst = (0, js_yaml_1.load)(inhalt);
       if (geparst === null || typeof geparst !== "object") {
-        throw new fehler_1.RegelsatzFehler(dateiname, "*", "enthaelt kein gueltiges YAML-Objekt");
+        throw new fehler_1.RegelsatzFehler(dateiname2, "*", "enthaelt kein gueltiges YAML-Objekt");
       }
       return geparst;
     }
@@ -27211,16 +27211,16 @@ var require_profil = __commonJS({
     var PROFIL_BASIS_VERZEICHNIS = (0, node_path_1.join)(__dirname, "..", "profile", "basis");
     function ladeProfilBasis2() {
       const meta = (0, regelsatz_1.ladeMeta)();
-      const dateien = exports2.PROFIL_DATEINAMEN.map((dateiname) => {
-        const pfad = (0, node_path_1.join)(PROFIL_BASIS_VERZEICHNIS, dateiname);
+      const dateien = exports2.PROFIL_DATEINAMEN.map((dateiname2) => {
+        const pfad = (0, node_path_1.join)(PROFIL_BASIS_VERZEICHNIS, dateiname2);
         const inhalt = (0, node_fs_1.readFileSync)(pfad, "utf-8");
-        return { dateiname, inhalt, pruefsumme: (0, pruefsumme_1.pruefsumme)(inhalt) };
+        return { dateiname: dateiname2, inhalt, pruefsumme: (0, pruefsumme_1.pruefsumme)(inhalt) };
       });
       return { basisversion: meta.version, dateien };
     }
-    function kopf(dateiname, basisversion) {
+    function kopf(dateiname2, basisversion) {
       return `# ERZEUGT AUS rules/, Version ${basisversion}. Nicht von Hand aendern, siehe scripts/generate.ts.
-# ${dateiname}
+# ${dateiname2}
 `;
     }
     function erzeugeKritikalitaetDelegation() {
@@ -30857,12 +30857,32 @@ function abschnittNotfaelle(notfaelle, jetzt) {
   const zeilen = offene.map((notfall) => `| ${notfall.ausgerufen_von} | ${notfall.frist} | ${bestimmeZustand(notfall, jetzt)} |`);
   return ["## Notfaelle", "", "| Ausgerufen von | Frist | Zustand |", "|---|---|---|", ...zeilen, "", zaehler].join("\n");
 }
-function abschnittProfil(profilBefunde) {
+function abschnittErgaenzungen(ergaenzungen) {
+  if (ergaenzungen === void 0) return [];
+  if (ergaenzungen.length === 0) {
+    return ["", "Ergaenzungen ausserhalb des Profils: keine."];
+  }
+  const zeilen = ergaenzungen.map(
+    (e) => `| ${e.dateiname} | ${e.zustand} | ${e.eintraege} |`
+  );
+  return [
+    "",
+    "Ergaenzungen ausserhalb des Profils. Sie sind kein Teil des Profils und werden nicht",
+    "gegen die Basis geprueft, GR-3.2 bleibt unangetastet. Sie stehen hier, damit sichtbar",
+    "ist, was zusaetzlich zum Standard gilt.",
+    "",
+    "| Datei | Zustand | Eintraege |",
+    "|---|---|---|",
+    ...zeilen
+  ];
+}
+function abschnittProfil(profilBefunde, ergaenzungen) {
+  const ergaenzt = abschnittErgaenzungen(ergaenzungen);
   if (profilBefunde.length === 0) {
-    return ["## Profil", "", "kein Profil installiert"].join("\n");
+    return ["## Profil", "", "kein Profil installiert", ...ergaenzt].join("\n");
   }
   const zeilen = profilBefunde.map((befund) => `| ${befund.dateiname} | ${befund.zustand} |`);
-  return ["## Profil", "", "| Datei | Zustand |", "|---|---|", ...zeilen].join("\n");
+  return ["## Profil", "", "| Datei | Zustand |", "|---|---|", ...zeilen, ...ergaenzt].join("\n");
 }
 function abschnittWasDarausFolgt() {
   return "## Was daraus folgt";
@@ -30881,7 +30901,7 @@ function erzeugeBerichtsinhalt(daten) {
     "",
     abschnittNotfaelle(daten.notfaelle, daten.jetzt),
     "",
-    abschnittProfil(daten.profilBefunde),
+    abschnittProfil(daten.profilBefunde, daten.ergaenzungen),
     "",
     abschnittWasDarausFolgt(),
     ""
@@ -30926,22 +30946,22 @@ async function stelleBerichtBereit(client, ziel, monat, inhalt) {
 
 // src/gemeinsam/profilbasis.generated.ts
 var PROFILBASIS = {
-  "basisversion": "1.0.0",
+  "basisversion": "0.1.0",
   "dateien": [
     {
       "dateiname": "kritikalitaet-delegation.yaml",
-      "inhalt": "# ERZEUGT AUS rules/, Version 1.0.0. Nicht von Hand aendern, siehe scripts/generate.ts.\n# kritikalitaet-delegation.yaml\n\nversion: 1.0.0\nkritikalitaet:\n  K1:\n    label: K1 leicht\n    definition: Fehler ist folgenlos oder trivial reversibel\n    typische_faelle:\n      - interne Tools\n      - Prototypen\n      - UI-Kosmetik\n      - Doku\n  K2:\n    label: K2 standard\n    definition: Fehler stoert Nutzer oder Geschaeft, ist aber behebbar\n    typische_faelle:\n      - Kundenfeatures\n      - Standard-Businesslogik\n      - Reports\n  K3:\n    label: K3 kritisch\n    definition: Fehler kostet Geld, Daten, Sicherheit oder Compliance\n    typische_faelle:\n      - Zahlungen\n      - Auth\n      - Datenmigration\n      - irreversible Aktionen\n      - personenbezogene Daten\n      - regulierte Domaenen\neinstufungsfragen:\n  - Verarbeitet oder erzeugt das Arbeitspaket Geld, personenbezogene Daten oder Zugangsdaten? -> mindestens K3.\n  - Ist ein Fehler ohne Datenverlust und ohne Nutzerauswirkung in Minuten rueckgaengig? -> K1.\n  - Betrifft es Kundenvertrauen oder Geschaeftsprozesse, ist aber technisch reparierbar? -> K2.\n  - Bleibt Unsicherheit? -> eine Stufe hoeher als der niedrigste plausible Wert.\ndelegation:\n  S1:\n    label: S1 Anweisen\n    modus: eng gefuehrt\n    ki_rolle: setzt exakt Spezifiziertes um\n    mensch_rolle: spezifiziert vollstaendig, prueft jede Zeile\n  S2:\n    label: S2 Coachen\n    modus: Entwurf plus enger Loop\n    ki_rolle: erzeugt Entwuerfe, iteriert am Feedback\n    mensch_rolle: prueft je Komponente\n  S3:\n    label: S3 Unterstuetzen\n    modus: eigenstaendig in Spec-Grenzen\n    ki_rolle: setzt eigenstaendig um\n    mensch_rolle: prueft an Modulgrenze und Gate\n  S4:\n    label: S4 Delegieren\n    modus: autonom in Leitplanken\n    ki_rolle: setzt um, testet, prueft selbst vor\n    mensch_rolle: prueft nur Ergebnis und Gates\nguardrail_regel:\n  bedingung: ohne maschinenlesbare Leitplanken (Coding-Standards, Contracts, automatisierte Tests, CI-Gates, Secret-Scanning)\n  obergrenze: S2\n  unabhaengig_von_k: true\nreifegrundsatz: Reife wird erarbeitet (wiederholt zuverlaessige Ergebnisse), nicht angenommen. Absenkung ist jederzeit erlaubt.\nmax_delegation_je_kritikalitaet:\n  label: Max. Delegation\n  K1:\n    wert: S4\n  K2:\n    wert: S3\n  K3:\n    wert: S2\n    ausnahme:\n      wert: S3\n      voraussetzungen:\n        - guardrails_vollstaendig\n        - historie_nachgewiesen\n      hinweis: S3 nur mit vollen Guardrails und nachgewiesener Historie\n",
-      "pruefsumme": "sha256:25c88a8a752efdbb1cf88bbefcd76f9dc9600065c831065e170948108a552822"
+      "inhalt": "# ERZEUGT AUS rules/, Version 0.1.0. Nicht von Hand aendern, siehe scripts/generate.ts.\n# kritikalitaet-delegation.yaml\n\nversion: 0.1.0\nkritikalitaet:\n  K1:\n    label: K1 leicht\n    definition: Fehler ist folgenlos oder trivial reversibel\n    typische_faelle:\n      - interne Tools\n      - Prototypen\n      - UI-Kosmetik\n      - Doku\n  K2:\n    label: K2 standard\n    definition: Fehler stoert Nutzer oder Geschaeft, ist aber behebbar\n    typische_faelle:\n      - Kundenfeatures\n      - Standard-Businesslogik\n      - Reports\n  K3:\n    label: K3 kritisch\n    definition: Fehler kostet Geld, Daten, Sicherheit oder Compliance\n    typische_faelle:\n      - Zahlungen\n      - Auth\n      - Datenmigration\n      - irreversible Aktionen\n      - personenbezogene Daten\n      - regulierte Domaenen\neinstufungsfragen:\n  - Verarbeitet oder erzeugt das Arbeitspaket Geld, personenbezogene Daten oder Zugangsdaten? -> mindestens K3.\n  - Ist ein Fehler ohne Datenverlust und ohne Nutzerauswirkung in Minuten rueckgaengig? -> K1.\n  - Betrifft es Kundenvertrauen oder Geschaeftsprozesse, ist aber technisch reparierbar? -> K2.\n  - Bleibt Unsicherheit? -> eine Stufe hoeher als der niedrigste plausible Wert.\ndelegation:\n  S1:\n    label: S1 Anweisen\n    modus: eng gefuehrt\n    ki_rolle: setzt exakt Spezifiziertes um\n    mensch_rolle: spezifiziert vollstaendig, prueft jede Zeile\n  S2:\n    label: S2 Coachen\n    modus: Entwurf plus enger Loop\n    ki_rolle: erzeugt Entwuerfe, iteriert am Feedback\n    mensch_rolle: prueft je Komponente\n  S3:\n    label: S3 Unterstuetzen\n    modus: eigenstaendig in Spec-Grenzen\n    ki_rolle: setzt eigenstaendig um\n    mensch_rolle: prueft an Modulgrenze und Gate\n  S4:\n    label: S4 Delegieren\n    modus: autonom in Leitplanken\n    ki_rolle: setzt um, testet, prueft selbst vor\n    mensch_rolle: prueft nur Ergebnis und Gates\nguardrail_regel:\n  bedingung: ohne maschinenlesbare Leitplanken (Coding-Standards, Contracts, automatisierte Tests, CI-Gates, Secret-Scanning)\n  obergrenze: S2\n  unabhaengig_von_k: true\nreifegrundsatz: Reife wird erarbeitet (wiederholt zuverlaessige Ergebnisse), nicht angenommen. Absenkung ist jederzeit erlaubt.\nmax_delegation_je_kritikalitaet:\n  label: Max. Delegation\n  K1:\n    wert: S4\n  K2:\n    wert: S3\n  K3:\n    wert: S2\n    ausnahme:\n      wert: S3\n      voraussetzungen:\n        - guardrails_vollstaendig\n        - historie_nachgewiesen\n      hinweis: S3 nur mit vollen Guardrails und nachgewiesener Historie\n",
+      "pruefsumme": "sha256:4154c6a176de2f672e42ab6681e30351f1ee8c195e9346e47be2516ee76f9241"
     },
     {
       "dateiname": "pruefungstiefen.yaml",
-      "inhalt": "# ERZEUGT AUS rules/, Version 1.0.0. Nicht von Hand aendern, siehe scripts/generate.ts.\n# pruefungstiefen.yaml\n\nversion: 1.0.0\ntraceability:\n  knoten:\n    - intent\n    - req\n    - spec\n    - contract\n    - code\n    - test\n    - outcome\n  stufen:\n    K1:\n      pfad:\n        - intent\n        - code\n      bidirektional: false\n    K2:\n      pfad:\n        - req\n        - spec\n        - pr\n      bidirektional: false\n    K3:\n      pfad:\n        - intent\n        - req\n        - spec\n        - contract\n        - code\n        - test\n        - outcome\n      bidirektional: true\n      zusatzkanten:\n        - von: test\n          nach: req\n          label: Test-zu-REQ-Nachweis\npruefungen_je_kritikalitaet:\n  contract_pflicht:\n    label: Contract-Pflicht\n    K1:\n      wert: false\n    K2:\n      wert: bei_modulgrenze\n    K3:\n      wert: true\n      umfang:\n        - api\n        - daten\n        - error\n  testabdeckung:\n    label: Testabdeckung\n    K1:\n      pflicht:\n        - smoke\n    K2:\n      pflicht:\n        - smoke\n        - unit_kernlogik\n    K3:\n      pflicht:\n        - smoke\n        - unit_kernlogik\n        - integration\n        - contract\n  review:\n    label: Review\n    K1:\n      modi:\n        - ki_selfreview\n        - stichprobe\n    K2:\n      modi:\n        - vier_augen\n    K3:\n      modi:\n        - vier_augen\n        - unabhaengiges_ki_zweitreview_frischer_kontext\n  gate_tiefe:\n    label: Gate-Tiefe\n    K1:\n      wert: Ein-Klick-Selbstcheck\n    K2:\n      wert: Standard-Checkliste\n    K3:\n      wert: volle Checkliste plus Freigabe durch Verantwortlichen\n      benannter_freigeber_pflicht: true\n  security:\n    label: Security\n    K1:\n      pflicht:\n        - secret_scan\n    K2:\n      pflicht:\n        - secret_scan\n        - rls_pruefung\n        - auth_pruefung\n    K3:\n      pflicht:\n        - secret_scan\n        - rls_pruefung\n        - auth_pruefung\n        - dast\n        - owasp_check\n        - verschluesselungspruefung\n",
-      "pruefsumme": "sha256:f858100dbacfb334469ead74f1ecbdef6c9fb6636fa428faa75d29eae01b5489"
+      "inhalt": "# ERZEUGT AUS rules/, Version 0.1.0. Nicht von Hand aendern, siehe scripts/generate.ts.\n# pruefungstiefen.yaml\n\nversion: 0.1.0\ntraceability:\n  knoten:\n    - intent\n    - req\n    - spec\n    - contract\n    - code\n    - test\n    - outcome\n  stufen:\n    K1:\n      pfad:\n        - intent\n        - code\n      bidirektional: false\n    K2:\n      pfad:\n        - req\n        - spec\n        - pr\n      bidirektional: false\n    K3:\n      pfad:\n        - intent\n        - req\n        - spec\n        - contract\n        - code\n        - test\n        - outcome\n      bidirektional: true\n      zusatzkanten:\n        - von: test\n          nach: req\n          label: Test-zu-REQ-Nachweis\npruefungen_je_kritikalitaet:\n  contract_pflicht:\n    label: Contract-Pflicht\n    K1:\n      wert: false\n    K2:\n      wert: bei_modulgrenze\n    K3:\n      wert: true\n      umfang:\n        - api\n        - daten\n        - error\n  testabdeckung:\n    label: Testabdeckung\n    K1:\n      pflicht:\n        - smoke\n    K2:\n      pflicht:\n        - smoke\n        - unit_kernlogik\n    K3:\n      pflicht:\n        - smoke\n        - unit_kernlogik\n        - integration\n        - contract\n  review:\n    label: Review\n    K1:\n      modi:\n        - ki_selfreview\n        - stichprobe\n    K2:\n      modi:\n        - vier_augen\n    K3:\n      modi:\n        - vier_augen\n        - unabhaengiges_ki_zweitreview_frischer_kontext\n  gate_tiefe:\n    label: Gate-Tiefe\n    K1:\n      wert: Ein-Klick-Selbstcheck\n    K2:\n      wert: Standard-Checkliste\n    K3:\n      wert: volle Checkliste plus Freigabe durch Verantwortlichen\n      benannter_freigeber_pflicht: true\n  security:\n    label: Security\n    K1:\n      pflicht:\n        - secret_scan\n    K2:\n      pflicht:\n        - secret_scan\n        - rls_pruefung\n        - auth_pruefung\n    K3:\n      pflicht:\n        - secret_scan\n        - rls_pruefung\n        - auth_pruefung\n        - dast\n        - owasp_check\n        - verschluesselungspruefung\n",
+      "pruefsumme": "sha256:6e25ff4319760b5cec0c4955ef366493fd64026ca9ba4178afc2853a94d48159"
     },
     {
       "dateiname": "wortlisten.yaml",
-      "inhalt": "# ERZEUGT AUS rules/, Version 1.0.0. Nicht von Hand aendern, siehe scripts/generate.ts.\n# wortlisten.yaml\n\nversion: 1.0.0\nrollen:\n  - kennung: auftraggeber\n    anzeigename: Auftraggeber\n    definition: traegt das wirtschaftliche Ergebnis und genehmigt den Projektumfang\n  - kennung: fachexperte\n    anzeigename: Fachexperte\n    definition: kennt die fachlichen Regeln und Ausnahmen der Domaene\n  - kennung: technische_leitung\n    anzeigename: technische Leitung\n    definition: verantwortet Architekturentscheidungen und die technische Machbarkeit des Vorhabens\n  - kennung: entwicklung\n    anzeigename: Entwicklung\n    definition: setzt Anforderungen in lauffaehigen, geprueften Code um\n  - kennung: reviewer\n    anzeigename: Reviewer\n    definition: prueft Arbeitsergebnisse und gibt sie vor dem Merge frei\n  - kennung: qualitaetssicherung\n    anzeigename: Qualitaetssicherung\n    definition: prueft Ergebnisse unabhaengig von der Entwicklung gegen die Abnahmekriterien\n  - kennung: betrieb\n    anzeigename: Betrieb\n    definition: verantwortet den laufenden Betrieb und die Stoerungsbehebung im Produktivsystem\n  - kennung: endnutzer\n    anzeigename: Endnutzer\n    definition: nutzt das fertige System im taeglichen Arbeitsablauf\n  - kennung: ki_agent\n    anzeigename: KI-Agent\n    definition: setzt Arbeitspakete innerhalb der festgelegten Delegationsstufe um\nunschaerfe:\n  - wort: schnell\n    stufe: verstoss\n    hinweis: Zahl mit Einheit nennen, zum Beispiel Antwortzeit unter 200 ms\n  - wort: langsam\n    stufe: verstoss\n    hinweis: oberen Schwellwert mit Einheit nennen\n  - wort: benutzerfreundlich\n    stufe: verstoss\n    hinweis: pruefbares Kriterium nennen, zum Beispiel Aufgabe in unter drei Klicks abschliessbar\n  - wort: performant\n    stufe: verstoss\n    hinweis: Durchsatz- oder Latenzzahl nennen\n  - wort: robust\n    stufe: verstoss\n    hinweis: konkreten Fehlerfall und erwartetes Verhalten nennen\n  - wort: intuitiv\n    stufe: verstoss\n    hinweis: pruefbares Nutzerverhalten nennen, zum Beispiel ohne Schulung bedienbar\n  - wort: zeitnah\n    stufe: verstoss\n    hinweis: Frist mit Einheit nennen\n  - wort: angemessen\n    stufe: warnung\n    hinweis: wo moeglich durch eine Zahl oder einen Verweis auf eine Norm ersetzen, Fachbegriff in Normtexten\n  - wort: m\xF6glichst\n    stufe: verstoss\n    hinweis: verbindliche Formulierung ohne Einschraenkung waehlen\n  - wort: gegebenenfalls\n    stufe: verstoss\n    hinweis: Bedingung explizit nennen, unter der der Satz gilt\n  - wort: einfach\n    stufe: verstoss\n    hinweis: konkretes Kriterium nennen, was Einfachheit hier bedeutet\n  - wort: flexibel\n    stufe: verstoss\n    hinweis: konkrete Variationsbreite nennen\n  - wort: modern\n    stufe: verstoss\n    hinweis: konkrete Technologie oder Version nennen\n  - wort: sicher\n    stufe: warnung\n    hinweis: wo moeglich durch eine Zahl, einen Standard oder eine Kontrollliste ersetzen, Fachbegriff in Normtexten\n",
-      "pruefsumme": "sha256:df238b73b9cb77bd5ef621750af7127b15ef1e9fe0df5a254880997f7af4724b"
+      "inhalt": "# ERZEUGT AUS rules/, Version 0.1.0. Nicht von Hand aendern, siehe scripts/generate.ts.\n# wortlisten.yaml\n\nversion: 0.1.0\nrollen:\n  - kennung: auftraggeber\n    anzeigename: Auftraggeber\n    definition: traegt das wirtschaftliche Ergebnis und genehmigt den Projektumfang\n  - kennung: fachexperte\n    anzeigename: Fachexperte\n    definition: kennt die fachlichen Regeln und Ausnahmen der Domaene\n  - kennung: technische_leitung\n    anzeigename: technische Leitung\n    definition: verantwortet Architekturentscheidungen und die technische Machbarkeit des Vorhabens\n  - kennung: entwicklung\n    anzeigename: Entwicklung\n    definition: setzt Anforderungen in lauffaehigen, geprueften Code um\n  - kennung: reviewer\n    anzeigename: Reviewer\n    definition: prueft Arbeitsergebnisse und gibt sie vor dem Merge frei\n  - kennung: qualitaetssicherung\n    anzeigename: Qualitaetssicherung\n    definition: prueft Ergebnisse unabhaengig von der Entwicklung gegen die Abnahmekriterien\n  - kennung: betrieb\n    anzeigename: Betrieb\n    definition: verantwortet den laufenden Betrieb und die Stoerungsbehebung im Produktivsystem\n  - kennung: endnutzer\n    anzeigename: Endnutzer\n    definition: nutzt das fertige System im taeglichen Arbeitsablauf\n  - kennung: ki_agent\n    anzeigename: KI-Agent\n    definition: setzt Arbeitspakete innerhalb der festgelegten Delegationsstufe um\nunschaerfe:\n  - wort: schnell\n    stufe: verstoss\n    hinweis: Zahl mit Einheit nennen, zum Beispiel Antwortzeit unter 200 ms\n  - wort: langsam\n    stufe: verstoss\n    hinweis: oberen Schwellwert mit Einheit nennen\n  - wort: benutzerfreundlich\n    stufe: verstoss\n    hinweis: pruefbares Kriterium nennen, zum Beispiel Aufgabe in unter drei Klicks abschliessbar\n  - wort: performant\n    stufe: verstoss\n    hinweis: Durchsatz- oder Latenzzahl nennen\n  - wort: robust\n    stufe: verstoss\n    hinweis: konkreten Fehlerfall und erwartetes Verhalten nennen\n  - wort: intuitiv\n    stufe: verstoss\n    hinweis: pruefbares Nutzerverhalten nennen, zum Beispiel ohne Schulung bedienbar\n  - wort: zeitnah\n    stufe: verstoss\n    hinweis: Frist mit Einheit nennen\n  - wort: angemessen\n    stufe: warnung\n    hinweis: wo moeglich durch eine Zahl oder einen Verweis auf eine Norm ersetzen, Fachbegriff in Normtexten\n  - wort: m\xF6glichst\n    stufe: verstoss\n    hinweis: verbindliche Formulierung ohne Einschraenkung waehlen\n  - wort: gegebenenfalls\n    stufe: verstoss\n    hinweis: Bedingung explizit nennen, unter der der Satz gilt\n  - wort: einfach\n    stufe: verstoss\n    hinweis: konkretes Kriterium nennen, was Einfachheit hier bedeutet\n  - wort: flexibel\n    stufe: verstoss\n    hinweis: konkrete Variationsbreite nennen\n  - wort: modern\n    stufe: verstoss\n    hinweis: konkrete Technologie oder Version nennen\n  - wort: sicher\n    stufe: warnung\n    hinweis: wo moeglich durch eine Zahl, einen Standard oder eine Kontrollliste ersetzen, Fachbegriff in Normtexten\n",
+      "pruefsumme": "sha256:ed17cf04413db122bc2204bb59615d3264dea6294329d68f1d30de168faf8049"
     }
   ]
 };
@@ -30978,31 +30998,31 @@ function ladeLock(lockPfad) {
   }
 }
 function vergleicheDatei(params) {
-  const { dateiname, profilInhalt, basisDatei, lockEintrag, aktuelleBasisversion } = params;
+  const { dateiname: dateiname2, profilInhalt, basisDatei, lockEintrag, aktuelleBasisversion } = params;
   if (profilInhalt === null) {
-    return { dateiname, zustand: "unlesbar", details: "Datei fehlt" };
+    return { dateiname: dateiname2, zustand: "unlesbar", details: "Datei fehlt" };
   }
   let profilDaten;
   try {
     profilDaten = load(ohneKommentarzeilen(profilInhalt));
   } catch {
-    return { dateiname, zustand: "unlesbar", details: "kein gueltiges YAML" };
+    return { dateiname: dateiname2, zustand: "unlesbar", details: "kein gueltiges YAML" };
   }
   if (profilDaten === null || typeof profilDaten !== "object") {
-    return { dateiname, zustand: "unlesbar", details: "kein gueltiges YAML-Objekt" };
+    return { dateiname: dateiname2, zustand: "unlesbar", details: "kein gueltiges YAML-Objekt" };
   }
   if (!lockEintrag) {
-    return { dateiname, zustand: "unlesbar", details: "kein Eintrag in profil.lock" };
+    return { dateiname: dateiname2, zustand: "unlesbar", details: "kein Eintrag in profil.lock" };
   }
   if (lockEintrag.basisversion !== aktuelleBasisversion) {
     return {
-      dateiname,
+      dateiname: dateiname2,
       zustand: "basis_veraltet",
       details: `profil.lock nennt ${lockEintrag.basisversion}, installiert ist ${aktuelleBasisversion}`
     };
   }
   if ((0, import_attesta_core.pruefsumme)(profilInhalt) === lockEintrag.pruefsumme) {
-    return { dateiname, zustand: "deckungsgleich" };
+    return { dateiname: dateiname2, zustand: "deckungsgleich" };
   }
   const basisWerte = /* @__PURE__ */ new Set();
   sammleLeafWerte(load(ohneKommentarzeilen(basisDatei.inhalt)), basisWerte);
@@ -31010,10 +31030,10 @@ function vergleicheDatei(params) {
   sammleLeafWerte(profilDaten, profilWerte);
   for (const wert of profilWerte) {
     if (!basisWerte.has(wert)) {
-      return { dateiname, zustand: "unbekannter_wert", details: `Wert "${wert}" liegt ausserhalb der Basis` };
+      return { dateiname: dateiname2, zustand: "unbekannter_wert", details: `Wert "${wert}" liegt ausserhalb der Basis` };
     }
   }
-  return { dateiname, zustand: "abgewichen" };
+  return { dateiname: dateiname2, zustand: "abgewichen" };
 }
 function vergleicheProfilVerzeichnis(profilVerzeichnis, lockPfad, basis) {
   const lock = ladeLock(lockPfad);
@@ -31287,6 +31307,47 @@ function leseEigeneRollen(wurzel) {
   return { rollen, befunde };
 }
 
+// src/gemeinsam/ergaenzungen.ts
+var import_node_fs4 = require("node:fs");
+var import_node_path2 = require("node:path");
+var ERGAENZUNGEN_VERZEICHNIS = "attesta";
+var ERGAENZUNGSGEGENSTAENDE = ["rollen"];
+function dateiname(gegenstand) {
+  return `${ERGAENZUNGEN_VERZEICHNIS}/${gegenstand}-eigene.yaml`;
+}
+function zaehleEintraege(pfad, gegenstand) {
+  let geparst;
+  try {
+    geparst = load((0, import_node_fs4.readFileSync)(pfad, "utf-8"));
+  } catch {
+    return "unlesbar";
+  }
+  if (geparst === null || geparst === void 0 || typeof geparst !== "object") return 0;
+  const liste = geparst[gegenstand];
+  if (!Array.isArray(liste)) return 0;
+  return liste.length;
+}
+function erhebeErgaenzungen(wurzel) {
+  const befunde = [];
+  for (const gegenstand of ERGAENZUNGSGEGENSTAENDE) {
+    const name = dateiname(gegenstand);
+    const pfad = (0, import_node_path2.join)(wurzel, ...name.split("/"));
+    if (!(0, import_node_fs4.existsSync)(pfad)) continue;
+    const ergebnis = zaehleEintraege(pfad, gegenstand);
+    if (ergebnis === "unlesbar") {
+      befunde.push({ gegenstand, dateiname: name, zustand: "unlesbar", eintraege: 0 });
+      continue;
+    }
+    befunde.push({
+      gegenstand,
+      dateiname: name,
+      zustand: ergebnis === 0 ? "leer" : "vorhanden",
+      eintraege: ergebnis
+    });
+  }
+  return befunde;
+}
+
 // src/gemeinsam/meldung.ts
 function formatiereBefund(felder) {
   const basis = `Verstoss gegen \`${felder.regelsatzdatei}\`, ${felder.regel}`;
@@ -31342,7 +31403,7 @@ var KS_MAX_DELEGATION = {
   "K3": "S2"
 };
 
-// src/action/arbeitspaket.ts
+// src/gemeinsam/arbeitspaket.ts
 function leseEinstufung(text) {
   const k = text.match(/\bK([123])\b/);
   const s = text.match(/\bS([1-4])\b/);
@@ -31705,13 +31766,15 @@ async function behandleMonatsbericht(octokit, owner, repo) {
     ladeAlleNotfaelle(octokit, { owner, repo, branch: standardBranch })
   ]);
   let profilBefunde = [];
+  let ergaenzungen = [];
   try {
     const wurzel = arbeitsverzeichnis();
     profilBefunde = vergleicheProfilVerzeichnis(`${wurzel}/attesta/profil`, `${wurzel}/attesta/profil.lock`, PROFILBASIS);
+    ergaenzungen = erhebeErgaenzungen(wurzel);
   } catch (e) {
     core2.warning(`Profilvergleich fuer den Bericht nicht moeglich: ${e instanceof Error ? e.message : String(e)}`);
   }
-  const inhalt = erzeugeBerichtsinhalt({ monat, ursachen, notfaelle, profilBefunde, jetzt: /* @__PURE__ */ new Date() });
+  const inhalt = erzeugeBerichtsinhalt({ monat, ursachen, notfaelle, profilBefunde, ergaenzungen, jetzt: /* @__PURE__ */ new Date() });
   const ergebnis = await stelleBerichtBereit(berichtClient, { owner, repo, standardBranch }, monat, inhalt);
   core2.info(`Monatsbericht ${ergebnis.neu ? "erstellt" : "aktualisiert"}: PR #${ergebnis.prNummer} auf ${ergebnis.branch}`);
 }
