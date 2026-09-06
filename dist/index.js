@@ -26950,6 +26950,7 @@ var require_regelsatz = __commonJS({
     exports2.ladeDelegation = ladeDelegation;
     exports2.ladeKsMatrix = ladeKsMatrix2;
     exports2.ladeTraceDepth = ladeTraceDepth;
+    exports2.ladeVorhabensgroesse = ladeVorhabensgroesse;
     exports2.ladePhasen = ladePhasen;
     exports2.ladeRollen = ladeRollen2;
     exports2.ladeUnschaerfe = ladeUnschaerfe2;
@@ -27041,6 +27042,21 @@ var require_regelsatz = __commonJS({
         version: (0, fehler_1.pruefePflichtfeld)(daten.version, "trace-depth.yaml", "version"),
         quelle: (0, fehler_1.pruefePflichtfeld)(daten.quelle, "trace-depth.yaml", "quelle"),
         knoten: (0, fehler_1.pruefePflichtfeld)(daten.knoten, "trace-depth.yaml", "knoten"),
+        stufen
+      };
+    }
+    function ladeVorhabensgroesse() {
+      const daten = ladeYaml("vorhabensgroesse.yaml");
+      const stufen = (0, fehler_1.pruefePflichtfeld)(daten.stufen, "vorhabensgroesse.yaml", "stufen");
+      for (const stufe of ["XS", "S", "M", "L"]) {
+        const s = stufen[stufe];
+        (0, fehler_1.pruefePflichtfeld)(s, "vorhabensgroesse.yaml", `stufen.${stufe}`);
+        (0, fehler_1.pruefePflichtfeld)(s.termine, "vorhabensgroesse.yaml", `stufen.${stufe}.termine`);
+      }
+      return {
+        version: (0, fehler_1.pruefePflichtfeld)(daten.version, "vorhabensgroesse.yaml", "version"),
+        quelle: (0, fehler_1.pruefePflichtfeld)(daten.quelle, "vorhabensgroesse.yaml", "quelle"),
+        buendelungsregel: (0, fehler_1.pruefePflichtfeld)(daten.buendelungsregel, "vorhabensgroesse.yaml", "buendelungsregel"),
         stufen
       };
     }
