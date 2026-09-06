@@ -13,7 +13,7 @@ import { join } from "node:path";
 import {
   ladeMeta, ladeCriticality, ladeDelegation, ladeKsMatrix, ladeTraceDepth,
   ladePhasen, ladeRollen, ladeUnschaerfe, ladeUrsachen, ladeTechnologien,
-  ladeDelegationsreife, ladeNotfall,
+  ladeDelegationsreife, ladeNotfall, ladeVorhabensgroesse,
 } from "@miloe255/attesta-core";
 
 const ZIEL = join(__dirname, "..", "docs", "regelsatz", "index.html");
@@ -89,6 +89,7 @@ function main(): void {
   const technologien = ladeTechnologien();
   const reife = ladeDelegationsreife();
   const notfall = ladeNotfall();
+  const groesse = ladeVorhabensgroesse();
 
   const dim = matrix.dimensionen as Record<string, Record<string, unknown>>;
   const abschnitte = [
@@ -114,6 +115,21 @@ function main(): void {
     abschnitt("phasen", "Phasenfolge P0 bis P6",
       tabelle(["Phase", "Zweck", "Gate"], Object.entries(phasen.phasen).map(([p, v]) => [`<b>${esc(p)}</b>`, esc(v.zweck), esc(v.gate)])) +
       `<p><b>Statusfluss P4:</b> ${esc(phasen.statusfluss_p4.join(" → "))}</p>`),
+
+    abschnitt("groesse", "Vorhabensgröße und Terminform",
+      `<p>Die Größe gilt je Vorhaben, nicht je Arbeitspaket, und wird durch Zählung fachlich trennbarer Komponenten bestimmt. Sie steuert das Anforderungsbudget und die Zahl der Termine, in denen die Gates gezogen werden. <b>Sie steuert nicht, welche Kriterien gezogen werden:</b> Ein gebündelter Termin trägt die Summe der Kriterien seiner Gates.</p>` +
+      tabelle(["Größe", "Komponenten", "Gate-Termine", "Artefaktform", "Anforderungsbudget"],
+        Object.entries(groesse.stufen).map(([name, s]) => [
+          `<b>${esc(name)}</b>`,
+          esc(s.komponenten),
+          esc(s.termine.length === 1
+            ? `7, ${s.termine[0]!.name}${s.je_teilvorhaben ? " je Teilvorhaben" : ""}`
+            : `${s.termine.length}: ${s.termine.map((t) => `${t.name} (Gate ${t.gates.length > 2 ? `${t.gates[0]} bis ${t.gates[t.gates.length - 1]}` : t.gates.join(" und ")})`).join(", ")}`),
+          esc(s.artefaktform) + (s.zusatzpflicht ? ` <b>${esc(s.zusatzpflicht)}.</b>` : ""),
+          esc(s.anforderungsbudget),
+        ])) +
+      `<p class="regel"><b>${esc(groesse.buendelungsregel.hinweis)}</b> Größe und Kritikalität sind unabhängig: Ein Vorhaben mit einer einzigen Komponente kann ein Bezahlvorgang sein. Ein Deckel auf die Zahl der Gates nähme ihm die namentliche Freigabe, weil es klein ist.</p>` +
+      `<p>Sämtliche Zahlen sind Startwerte ohne Datenbasis.</p>`),
 
     abschnitt("rollen", "Rollen, zulässige Akteure einer Anforderung",
       tabelle(["Kennung", "Anzeigename", "Definition"], rollen.rollen.map((r) => [`<code>${esc(r.kennung)}</code>`, esc(r.anzeigename), esc(r.definition)]))),
@@ -144,7 +160,7 @@ function main(): void {
 
   const nav = [
     ["kritikalitaet", "Kritikalität"], ["delegation", "Delegation"], ["matrix", "K-mal-S-Matrix"],
-    ["traceability", "Traceability"], ["phasen", "Phasen"], ["rollen", "Rollen"],
+    ["traceability", "Traceability"], ["phasen", "Phasen"], ["groesse", "Vorhabensgröße"], ["rollen", "Rollen"],
     ["unschaerfe", "Unschärfe"], ["ursachen", "Ursachen"], ["reife", "Delegationsreife"],
     ["notfall", "Notfallpfad"], ["technologien", "Technologien"],
   ].map(([id, t]) => `<a href="#${id}">${esc(t)}</a>`).join(" · ");
