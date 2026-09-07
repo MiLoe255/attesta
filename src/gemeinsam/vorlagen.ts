@@ -4,8 +4,8 @@
  */
 export const WORKFLOW_PFAD = ".github/workflows/attesta.yml";
 
-export const WORKFLOW_VORLAGE = `# Ersetze <ORG> durch den Marketplace-Eintrag, sobald er steht (siehe D1-7).
-# Bis dahin: Fork oder Kopie dieses Repositorys referenzieren.
+export const WORKFLOW_VORLAGE = `# Die Fassung ist gepinnt. v0.1.0 und nicht v1: Die Wortmarke ist vor jeder
+# Veroeffentlichung anzumelden, deshalb bleibt der Zyklus in der Nullerreihe.
 name: Attesta Zyklus
 
 on:
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: <ORG>/attesta@v1
+      - uses: MiLoe255/attesta@v0.1.0
         with:
           github-token: \${{ secrets.GITHUB_TOKEN }}
           # Optional. Ohne Schluessel oder mit abgelaufenem Schluessel laeuft

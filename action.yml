@@ -13,7 +13,10 @@ inputs:
     required: false
 
 runs:
-  using: "node20"
+  # node24, seit 05.09.2026. GitHub fuehrt Laeufe ohnehin auf Node 24 aus und warnt bei
+  # jedem Lauf ueber die Abkuendigung von Node 20. Die Warnung stand damit in jedem
+  # Kundenlauf und in jedem Testlauf.
+  using: "node24"
   main: "dist/index.js"
 
 branding:

@@ -33,8 +33,8 @@ steht deshalb im Grundlauf immer auf `neutral`.
 
 | Fehlt | Folge für dich | Herkunft |
 |---|---|---|
-| Marketplace-Eintrag | Der Workflow verweist auf `MiLoe255/attesta@main` statt auf eine Versionsmarke | D1-7, Wortmarke ist vor jeder Veröffentlichung anzumelden |
-| Veröffentlichung auf npm | `npx attesta init` funktioniert nicht. Der Weg über den Konfigurator ersetzt es, siehe Schritt 3 | `package.json` trägt `private: true` |
+| Marketplace-Eintrag | Der Workflow verweist auf die Versionsmarke `MiLoe255/attesta@v0.1.0`, nicht auf einen Marketplace-Eintrag. Gepinnt ist er damit, gelistet nicht | D1-7, Wortmarke ist vor jeder Veröffentlichung anzumelden. Deshalb Nullerreihe und kein `v1` |
+| Veröffentlichung auf npm | `npx attesta init` funktioniert nicht. Der Weg über den Konfigurator ersetzt es, siehe Schritt 3. Ohne JavaScript bleibt `npx github:MiLoe255/attesta init` | `package.json` trägt `private: true` |
 | Veröffentlichte Webseiten | Konfigurator und Regelsatzseite werden lokal geöffnet statt im Web aufgerufen. Beide liegen als HTML im Repository unter `docs/` | GitHub Pages ist für `attesta` nicht eingeschaltet |
 
 ### Was der Bausatz an deinem Repository verändert
