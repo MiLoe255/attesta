@@ -73,7 +73,17 @@ jobs:
         run: npm ci
 
       # attesta-core fuehrt sein dist/ nicht im Repositorium, main zeigt aber darauf.
-      # Ohne diesen Schritt ist der Regelsatz zwar da und nicht ladbar.
+      # Ohne diese zwei Schritte ist der Regelsatz zwar da und nicht ladbar.
+      #
+      # Ein eigenes npm ci, und zwar aus dem Lockfile von attesta-core. Der erste Lauf am
+      # 07.09.2026 verliess sich darauf, dass npm die Abhaengigkeiten des verlinkten
+      # Pakets mitanlegt. Der Bau fand dann ein anderes TypeScript als das gepinnte und
+      # brach mit "Option 'moduleResolution=node10' has been removed" ab, einem Fehler,
+      # den es lokal nicht gibt. Zwei Baeume, zwei Lockfiles, zwei Installationen.
+      - name: Abhaengigkeiten des Regelsatzes
+        working-directory: attesta-core
+        run: npm ci
+
       - name: Regelsatz bauen
         working-directory: attesta-core
         run: npm run build
