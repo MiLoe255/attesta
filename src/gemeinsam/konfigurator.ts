@@ -84,7 +84,7 @@ export function erzeugeHtml(dateien: Datei[]): string {
 </head>
 <body>
 <noscript>
-  <p><strong>Diese Seite braucht JavaScript.</strong> Ohne JavaScript nutze stattdessen die Konsole: <code>npx attesta init</code> im eigenen Repository.</p>
+  <p><strong>Diese Seite braucht JavaScript.</strong> Ohne JavaScript nutze stattdessen die Konsole aus einem Abzug dieses Repositoriums: <code>npx github:MiLoe255/attesta init</code> im eigenen Repository. Das Paket liegt auf keiner Registry, der Aufruf holt es aus dem Quelltext.</p>
 </noscript>
 
 <h1><span class="marke">Attesta Zyklus</span>: Konfigurator</h1>
