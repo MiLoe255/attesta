@@ -45,17 +45,17 @@ jobs:
       # der Pruefpipeline." Der Weg hier macht die Pipeline zum Arbeitsplatz, statt das
       # Paket zu veroeffentlichen. Das ist die kleinere Aenderung und haelt den
       # Regelsatz privat.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: attesta
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: MiLoe255/attesta-core
           token: ${{ secrets.ATTESTA_CORE_TOKEN }}
           path: attesta-core
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
