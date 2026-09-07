@@ -16,6 +16,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Von Hand ausloesbar, damit ein Lauf nach einer Aenderung an den Secrets nicht einen
+  # leeren Commit braucht. Ein Wiederholungslauf ist dafuer kein Ersatz: Er beantwortet
+  # nicht zuverlaessig, ob die Umgebung sich geaendert hat.
+  workflow_dispatch: {}
 
 permissions:
   contents: read
