@@ -1,7 +1,7 @@
 # Attesta Zyklus: Inbetriebnahme
 
 **Schritt-für-Schritt-Anleitung für das erste Repository**
-Stand 25.08.2026 | gilt für `attesta` ab Commit `ae3e72a`
+Stand 25.08.2026 | gilt für `attesta` ab Commit `8e96e38` (vor der Historienumschreibung vom 21.09.2026: `ae3e72a`, siehe `HERKUNFT.md`)
 
 Diese Anleitung ist einmal vollständig durchgespielt worden, in einem echten
 GitHub-Repository, mit echten Workflow-Läufen. Jeder Schritt unten ist belegt
