@@ -1284,16 +1284,21 @@ function requireLoader() {
       state.result += _result;
     }
   }
+  function chargeMergeWork(state) {
+    state.totalMergeKeys++;
+    if (state.maxTotalMergeKeys !== -1 && state.totalMergeKeys > state.maxTotalMergeKeys) {
+      throwError(state, "merge keys exceeded maxTotalMergeKeys (" + state.maxTotalMergeKeys + ")");
+    }
+  }
   function mergeMappings(state, destination, source, overridableKeys) {
     if (!common2.isObject(source)) {
       throwError(state, "cannot merge mappings; the provided source object is unacceptable");
     }
+    chargeMergeWork(state);
     const sourceKeys = Object.keys(source);
     for (let index = 0, quantity = sourceKeys.length; index < quantity; index += 1) {
       const key = sourceKeys[index];
-      if (state.maxTotalMergeKeys !== -1 && ++state.totalMergeKeys > state.maxTotalMergeKeys) {
-        throwError(state, "merge keys exceeded maxTotalMergeKeys (" + state.maxTotalMergeKeys + ")");
-      }
+      chargeMergeWork(state);
       if (!_hasOwnProperty.call(destination, key)) {
         setProperty(destination, key, source[key]);
         overridableKeys[key] = true;
@@ -1321,6 +1326,9 @@ function requireLoader() {
     }
     if (keyTag === "tag:yaml.org,2002:merge") {
       if (Array.isArray(valueNode)) {
+        if (valueNode.length > 100) {
+          throwError(state, "abnormal merge sequence size");
+        }
         for (let index = 0, quantity = valueNode.length; index < quantity; index += 1) {
           mergeMappings(state, _result, valueNode[index], overridableKeys);
         }
@@ -2618,7 +2626,7 @@ function requireDumper() {
     return quotingType === QUOTING_TYPE_DOUBLE ? STYLE_DOUBLE : STYLE_SINGLE;
   }
   function writeScalar(state, string, level, iskey, inblock) {
-    state.dump = function() {
+    state.dump = (function() {
       if (string.length === 0) {
         return state.quotingType === QUOTING_TYPE_DOUBLE ? '""' : "''";
       }
@@ -2657,7 +2665,7 @@ function requireDumper() {
         default:
           throw new YAMLException2("impossible error: invalid scalar style");
       }
-    }();
+    })();
   }
   function blockHeader(string, indentPerLevel) {
     const indentIndicator = needIndentIndicator(string) ? String(indentPerLevel) : "";
@@ -2671,12 +2679,12 @@ function requireDumper() {
   }
   function foldString(string, width) {
     const lineRe = /(\n+)([^\n]*)/g;
-    let result = function() {
+    let result = (function() {
       let nextLF = string.indexOf("\n");
       nextLF = nextLF !== -1 ? nextLF : string.length;
       lineRe.lastIndex = nextLF;
       return foldLine(string.slice(0, nextLF), width);
-    }();
+    })();
     let prevMoreIndented = string[0] === "\n" || string[0] === " ";
     let moreIndented;
     let match;

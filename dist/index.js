@@ -6,7 +6,11 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __commonJS = (cb, mod) => function __require() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -61,7 +65,7 @@ var require_utils = __commonJS({
 var require_command = __commonJS({
   "node_modules/@actions/core/lib/command.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -70,13 +74,13 @@ var require_command = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -147,7 +151,7 @@ var require_command = __commonJS({
 var require_file_command = __commonJS({
   "node_modules/@actions/core/lib/file-command.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -156,13 +160,13 @@ var require_file_command = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -531,67 +535,67 @@ var require_tunnel2 = __commonJS({
 var require_symbols = __commonJS({
   "node_modules/undici/lib/core/symbols.js"(exports2, module2) {
     module2.exports = {
-      kClose: Symbol("close"),
-      kDestroy: Symbol("destroy"),
-      kDispatch: Symbol("dispatch"),
-      kUrl: Symbol("url"),
-      kWriting: Symbol("writing"),
-      kResuming: Symbol("resuming"),
-      kQueue: Symbol("queue"),
-      kConnect: Symbol("connect"),
-      kConnecting: Symbol("connecting"),
-      kHeadersList: Symbol("headers list"),
-      kKeepAliveDefaultTimeout: Symbol("default keep alive timeout"),
-      kKeepAliveMaxTimeout: Symbol("max keep alive timeout"),
-      kKeepAliveTimeoutThreshold: Symbol("keep alive timeout threshold"),
-      kKeepAliveTimeoutValue: Symbol("keep alive timeout"),
-      kKeepAlive: Symbol("keep alive"),
-      kHeadersTimeout: Symbol("headers timeout"),
-      kBodyTimeout: Symbol("body timeout"),
-      kServerName: Symbol("server name"),
-      kLocalAddress: Symbol("local address"),
-      kHost: Symbol("host"),
-      kNoRef: Symbol("no ref"),
-      kBodyUsed: Symbol("used"),
-      kRunning: Symbol("running"),
-      kBlocking: Symbol("blocking"),
-      kPending: Symbol("pending"),
-      kSize: Symbol("size"),
-      kBusy: Symbol("busy"),
-      kQueued: Symbol("queued"),
-      kFree: Symbol("free"),
-      kConnected: Symbol("connected"),
-      kClosed: Symbol("closed"),
-      kNeedDrain: Symbol("need drain"),
-      kReset: Symbol("reset"),
-      kDestroyed: Symbol.for("nodejs.stream.destroyed"),
-      kMaxHeadersSize: Symbol("max headers size"),
-      kRunningIdx: Symbol("running index"),
-      kPendingIdx: Symbol("pending index"),
-      kError: Symbol("error"),
-      kClients: Symbol("clients"),
-      kClient: Symbol("client"),
-      kParser: Symbol("parser"),
-      kOnDestroyed: Symbol("destroy callbacks"),
-      kPipelining: Symbol("pipelining"),
-      kSocket: Symbol("socket"),
-      kHostHeader: Symbol("host header"),
-      kConnector: Symbol("connector"),
-      kStrictContentLength: Symbol("strict content length"),
-      kMaxRedirections: Symbol("maxRedirections"),
-      kMaxRequests: Symbol("maxRequestsPerClient"),
-      kProxy: Symbol("proxy agent options"),
-      kCounter: Symbol("socket request counter"),
-      kInterceptors: Symbol("dispatch interceptors"),
-      kMaxResponseSize: Symbol("max response size"),
-      kHTTP2Session: Symbol("http2Session"),
-      kHTTP2SessionState: Symbol("http2Session state"),
-      kHTTP2BuildRequest: Symbol("http2 build request"),
-      kHTTP1BuildRequest: Symbol("http1 build request"),
-      kHTTP2CopyHeaders: Symbol("http2 copy headers"),
-      kHTTPConnVersion: Symbol("http connection version"),
-      kRetryHandlerDefaultRetry: Symbol("retry agent default retry"),
-      kConstruct: Symbol("constructable")
+      kClose: /* @__PURE__ */ Symbol("close"),
+      kDestroy: /* @__PURE__ */ Symbol("destroy"),
+      kDispatch: /* @__PURE__ */ Symbol("dispatch"),
+      kUrl: /* @__PURE__ */ Symbol("url"),
+      kWriting: /* @__PURE__ */ Symbol("writing"),
+      kResuming: /* @__PURE__ */ Symbol("resuming"),
+      kQueue: /* @__PURE__ */ Symbol("queue"),
+      kConnect: /* @__PURE__ */ Symbol("connect"),
+      kConnecting: /* @__PURE__ */ Symbol("connecting"),
+      kHeadersList: /* @__PURE__ */ Symbol("headers list"),
+      kKeepAliveDefaultTimeout: /* @__PURE__ */ Symbol("default keep alive timeout"),
+      kKeepAliveMaxTimeout: /* @__PURE__ */ Symbol("max keep alive timeout"),
+      kKeepAliveTimeoutThreshold: /* @__PURE__ */ Symbol("keep alive timeout threshold"),
+      kKeepAliveTimeoutValue: /* @__PURE__ */ Symbol("keep alive timeout"),
+      kKeepAlive: /* @__PURE__ */ Symbol("keep alive"),
+      kHeadersTimeout: /* @__PURE__ */ Symbol("headers timeout"),
+      kBodyTimeout: /* @__PURE__ */ Symbol("body timeout"),
+      kServerName: /* @__PURE__ */ Symbol("server name"),
+      kLocalAddress: /* @__PURE__ */ Symbol("local address"),
+      kHost: /* @__PURE__ */ Symbol("host"),
+      kNoRef: /* @__PURE__ */ Symbol("no ref"),
+      kBodyUsed: /* @__PURE__ */ Symbol("used"),
+      kRunning: /* @__PURE__ */ Symbol("running"),
+      kBlocking: /* @__PURE__ */ Symbol("blocking"),
+      kPending: /* @__PURE__ */ Symbol("pending"),
+      kSize: /* @__PURE__ */ Symbol("size"),
+      kBusy: /* @__PURE__ */ Symbol("busy"),
+      kQueued: /* @__PURE__ */ Symbol("queued"),
+      kFree: /* @__PURE__ */ Symbol("free"),
+      kConnected: /* @__PURE__ */ Symbol("connected"),
+      kClosed: /* @__PURE__ */ Symbol("closed"),
+      kNeedDrain: /* @__PURE__ */ Symbol("need drain"),
+      kReset: /* @__PURE__ */ Symbol("reset"),
+      kDestroyed: /* @__PURE__ */ Symbol.for("nodejs.stream.destroyed"),
+      kMaxHeadersSize: /* @__PURE__ */ Symbol("max headers size"),
+      kRunningIdx: /* @__PURE__ */ Symbol("running index"),
+      kPendingIdx: /* @__PURE__ */ Symbol("pending index"),
+      kError: /* @__PURE__ */ Symbol("error"),
+      kClients: /* @__PURE__ */ Symbol("clients"),
+      kClient: /* @__PURE__ */ Symbol("client"),
+      kParser: /* @__PURE__ */ Symbol("parser"),
+      kOnDestroyed: /* @__PURE__ */ Symbol("destroy callbacks"),
+      kPipelining: /* @__PURE__ */ Symbol("pipelining"),
+      kSocket: /* @__PURE__ */ Symbol("socket"),
+      kHostHeader: /* @__PURE__ */ Symbol("host header"),
+      kConnector: /* @__PURE__ */ Symbol("connector"),
+      kStrictContentLength: /* @__PURE__ */ Symbol("strict content length"),
+      kMaxRedirections: /* @__PURE__ */ Symbol("maxRedirections"),
+      kMaxRequests: /* @__PURE__ */ Symbol("maxRequestsPerClient"),
+      kProxy: /* @__PURE__ */ Symbol("proxy agent options"),
+      kCounter: /* @__PURE__ */ Symbol("socket request counter"),
+      kInterceptors: /* @__PURE__ */ Symbol("dispatch interceptors"),
+      kMaxResponseSize: /* @__PURE__ */ Symbol("max response size"),
+      kHTTP2Session: /* @__PURE__ */ Symbol("http2Session"),
+      kHTTP2SessionState: /* @__PURE__ */ Symbol("http2Session state"),
+      kHTTP2BuildRequest: /* @__PURE__ */ Symbol("http2 build request"),
+      kHTTP1BuildRequest: /* @__PURE__ */ Symbol("http1 build request"),
+      kHTTP2CopyHeaders: /* @__PURE__ */ Symbol("http2 copy headers"),
+      kHTTPConnVersion: /* @__PURE__ */ Symbol("http connection version"),
+      kRetryHandlerDefaultRetry: /* @__PURE__ */ Symbol("retry agent default retry"),
+      kConstruct: /* @__PURE__ */ Symbol("constructable")
     };
   }
 });
@@ -3586,7 +3590,7 @@ var require_constants2 = __commonJS({
 var require_global = __commonJS({
   "node_modules/undici/lib/fetch/global.js"(exports2, module2) {
     "use strict";
-    var globalOrigin = Symbol.for("undici.globalOrigin.1");
+    var globalOrigin = /* @__PURE__ */ Symbol.for("undici.globalOrigin.1");
     function getGlobalOrigin() {
       return globalThis[globalOrigin];
     }
@@ -4238,12 +4242,12 @@ var require_symbols2 = __commonJS({
   "node_modules/undici/lib/fetch/symbols.js"(exports2, module2) {
     "use strict";
     module2.exports = {
-      kUrl: Symbol("url"),
-      kHeaders: Symbol("headers"),
-      kSignal: Symbol("signal"),
-      kState: Symbol("state"),
-      kGuard: Symbol("guard"),
-      kRealm: Symbol("realm")
+      kUrl: /* @__PURE__ */ Symbol("url"),
+      kHeaders: /* @__PURE__ */ Symbol("headers"),
+      kSignal: /* @__PURE__ */ Symbol("signal"),
+      kState: /* @__PURE__ */ Symbol("state"),
+      kGuard: /* @__PURE__ */ Symbol("guard"),
+      kRealm: /* @__PURE__ */ Symbol("realm")
     };
   }
 });
@@ -5636,7 +5640,7 @@ var require_request = __commonJS({
     var tokenRegExp = /^[\^_`a-zA-Z\-0-9!#$%&'*+.|~]+$/;
     var headerCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
     var invalidPathRegex = /[^\u0021-\u00ff]/;
-    var kHandler = Symbol("handler");
+    var kHandler = /* @__PURE__ */ Symbol("handler");
     var channels = {};
     var extractBody;
     try {
@@ -6023,11 +6027,11 @@ var require_dispatcher_base = __commonJS({
       InvalidArgumentError
     } = require_errors();
     var { kDestroy, kClose, kDispatch, kInterceptors } = require_symbols();
-    var kDestroyed = Symbol("destroyed");
-    var kClosed = Symbol("closed");
-    var kOnDestroyed = Symbol("onDestroyed");
-    var kOnClosed = Symbol("onClosed");
-    var kInterceptedDispatch = Symbol("Intercepted Dispatch");
+    var kDestroyed = /* @__PURE__ */ Symbol("destroyed");
+    var kClosed = /* @__PURE__ */ Symbol("closed");
+    var kOnDestroyed = /* @__PURE__ */ Symbol("onDestroyed");
+    var kOnClosed = /* @__PURE__ */ Symbol("onClosed");
+    var kInterceptedDispatch = /* @__PURE__ */ Symbol("Intercepted Dispatch");
     var DispatcherBase = class extends Dispatcher {
       constructor() {
         super();
@@ -6682,7 +6686,7 @@ var require_RedirectHandler = __commonJS({
     var { InvalidArgumentError } = require_errors();
     var EE = require("events");
     var redirectableStatusCodes = [300, 301, 302, 303, 307, 308];
-    var kBody = Symbol("body");
+    var kBody = /* @__PURE__ */ Symbol("body");
     var BodyAsyncIterable = class {
       constructor(body) {
         this[kBody] = body;
@@ -6956,7 +6960,7 @@ var require_client = __commonJS({
     } = http2;
     var h2ExperimentalWarned = false;
     var FastBuffer = Buffer[Symbol.species];
-    var kClosedResolve = Symbol("kClosedResolve");
+    var kClosedResolve = /* @__PURE__ */ Symbol("kClosedResolve");
     var channels = {};
     try {
       const diagnosticsChannel = require("diagnostics_channel");
@@ -8626,7 +8630,7 @@ var require_fixed_queue = __commonJS({
 var require_pool_stats = __commonJS({
   "node_modules/undici/lib/pool-stats.js"(exports2, module2) {
     var { kFree, kConnected, kPending, kQueued, kRunning, kSize } = require_symbols();
-    var kPool = Symbol("pool");
+    var kPool = /* @__PURE__ */ Symbol("pool");
     var PoolStats = class {
       constructor(pool) {
         this[kPool] = pool;
@@ -8662,18 +8666,18 @@ var require_pool_base = __commonJS({
     var FixedQueue = require_fixed_queue();
     var { kConnected, kSize, kRunning, kPending, kQueued, kBusy, kFree, kUrl, kClose, kDestroy, kDispatch } = require_symbols();
     var PoolStats = require_pool_stats();
-    var kClients = Symbol("clients");
-    var kNeedDrain = Symbol("needDrain");
-    var kQueue = Symbol("queue");
-    var kClosedResolve = Symbol("closed resolve");
-    var kOnDrain = Symbol("onDrain");
-    var kOnConnect = Symbol("onConnect");
-    var kOnDisconnect = Symbol("onDisconnect");
-    var kOnConnectionError = Symbol("onConnectionError");
-    var kGetDispatcher = Symbol("get dispatcher");
-    var kAddClient = Symbol("add client");
-    var kRemoveClient = Symbol("remove client");
-    var kStats = Symbol("stats");
+    var kClients = /* @__PURE__ */ Symbol("clients");
+    var kNeedDrain = /* @__PURE__ */ Symbol("needDrain");
+    var kQueue = /* @__PURE__ */ Symbol("queue");
+    var kClosedResolve = /* @__PURE__ */ Symbol("closed resolve");
+    var kOnDrain = /* @__PURE__ */ Symbol("onDrain");
+    var kOnConnect = /* @__PURE__ */ Symbol("onConnect");
+    var kOnDisconnect = /* @__PURE__ */ Symbol("onDisconnect");
+    var kOnConnectionError = /* @__PURE__ */ Symbol("onConnectionError");
+    var kGetDispatcher = /* @__PURE__ */ Symbol("get dispatcher");
+    var kAddClient = /* @__PURE__ */ Symbol("add client");
+    var kRemoveClient = /* @__PURE__ */ Symbol("remove client");
+    var kStats = /* @__PURE__ */ Symbol("stats");
     var PoolBase = class extends DispatcherBase {
       constructor() {
         super();
@@ -8827,9 +8831,9 @@ var require_pool = __commonJS({
     var util = require_util();
     var { kUrl, kInterceptors } = require_symbols();
     var buildConnector = require_connect();
-    var kOptions = Symbol("options");
-    var kConnections = Symbol("connections");
-    var kFactory = Symbol("factory");
+    var kOptions = /* @__PURE__ */ Symbol("options");
+    var kConnections = /* @__PURE__ */ Symbol("connections");
+    var kFactory = /* @__PURE__ */ Symbol("factory");
     function defaultFactory(origin, opts) {
       return new Client(origin, opts);
     }
@@ -8918,14 +8922,14 @@ var require_balanced_pool = __commonJS({
     var Pool = require_pool();
     var { kUrl, kInterceptors } = require_symbols();
     var { parseOrigin } = require_util();
-    var kFactory = Symbol("factory");
-    var kOptions = Symbol("options");
-    var kGreatestCommonDivisor = Symbol("kGreatestCommonDivisor");
-    var kCurrentWeight = Symbol("kCurrentWeight");
-    var kIndex = Symbol("kIndex");
-    var kWeight = Symbol("kWeight");
-    var kMaxWeightPerServer = Symbol("kMaxWeightPerServer");
-    var kErrorPenalty = Symbol("kErrorPenalty");
+    var kFactory = /* @__PURE__ */ Symbol("factory");
+    var kOptions = /* @__PURE__ */ Symbol("options");
+    var kGreatestCommonDivisor = /* @__PURE__ */ Symbol("kGreatestCommonDivisor");
+    var kCurrentWeight = /* @__PURE__ */ Symbol("kCurrentWeight");
+    var kIndex = /* @__PURE__ */ Symbol("kIndex");
+    var kWeight = /* @__PURE__ */ Symbol("kWeight");
+    var kMaxWeightPerServer = /* @__PURE__ */ Symbol("kMaxWeightPerServer");
+    var kErrorPenalty = /* @__PURE__ */ Symbol("kErrorPenalty");
     function getGreatestCommonDivisor(a, b) {
       if (b === 0) return a;
       return getGreatestCommonDivisor(b, a % b);
@@ -9088,14 +9092,14 @@ var require_agent = __commonJS({
     var util = require_util();
     var createRedirectInterceptor = require_redirectInterceptor();
     var { WeakRef: WeakRef2, FinalizationRegistry } = require_dispatcher_weakref()();
-    var kOnConnect = Symbol("onConnect");
-    var kOnDisconnect = Symbol("onDisconnect");
-    var kOnConnectionError = Symbol("onConnectionError");
-    var kMaxRedirections = Symbol("maxRedirections");
-    var kOnDrain = Symbol("onDrain");
-    var kFactory = Symbol("factory");
-    var kFinalizer = Symbol("finalizer");
-    var kOptions = Symbol("options");
+    var kOnConnect = /* @__PURE__ */ Symbol("onConnect");
+    var kOnDisconnect = /* @__PURE__ */ Symbol("onDisconnect");
+    var kOnConnectionError = /* @__PURE__ */ Symbol("onConnectionError");
+    var kMaxRedirections = /* @__PURE__ */ Symbol("maxRedirections");
+    var kOnDrain = /* @__PURE__ */ Symbol("onDrain");
+    var kFactory = /* @__PURE__ */ Symbol("factory");
+    var kFinalizer = /* @__PURE__ */ Symbol("finalizer");
+    var kOptions = /* @__PURE__ */ Symbol("options");
     function defaultFactory(origin, opts) {
       return opts && opts.connections === 1 ? new Client(origin, opts) : new Pool(origin, opts);
     }
@@ -9204,11 +9208,11 @@ var require_readable = __commonJS({
     var util = require_util();
     var { ReadableStreamFrom, toUSVString } = require_util();
     var Blob2;
-    var kConsume = Symbol("kConsume");
-    var kReading = Symbol("kReading");
-    var kBody = Symbol("kBody");
-    var kAbort = Symbol("abort");
-    var kContentType = Symbol("kContentType");
+    var kConsume = /* @__PURE__ */ Symbol("kConsume");
+    var kReading = /* @__PURE__ */ Symbol("kReading");
+    var kBody = /* @__PURE__ */ Symbol("kBody");
+    var kAbort = /* @__PURE__ */ Symbol("abort");
+    var kContentType = /* @__PURE__ */ Symbol("kContentType");
     var noop = () => {
     };
     module2.exports = class BodyReadable extends Readable {
@@ -9494,8 +9498,8 @@ var require_abort_signal = __commonJS({
   "node_modules/undici/lib/api/abort-signal.js"(exports2, module2) {
     var { addAbortListener } = require_util();
     var { RequestAbortedError } = require_errors();
-    var kListener = Symbol("kListener");
-    var kSignal = Symbol("kSignal");
+    var kListener = /* @__PURE__ */ Symbol("kListener");
+    var kSignal = /* @__PURE__ */ Symbol("kSignal");
     function abort(self) {
       if (self.abort) {
         self.abort();
@@ -9884,7 +9888,7 @@ var require_api_pipeline = __commonJS({
     var { AsyncResource } = require("async_hooks");
     var { addSignal, removeSignal } = require_abort_signal();
     var assert = require("assert");
-    var kResume = Symbol("resume");
+    var kResume = /* @__PURE__ */ Symbol("resume");
     var PipelineRequest = class extends Readable {
       constructor() {
         super({ autoDestroy: true });
@@ -10278,25 +10282,25 @@ var require_mock_symbols = __commonJS({
   "node_modules/undici/lib/mock/mock-symbols.js"(exports2, module2) {
     "use strict";
     module2.exports = {
-      kAgent: Symbol("agent"),
-      kOptions: Symbol("options"),
-      kFactory: Symbol("factory"),
-      kDispatches: Symbol("dispatches"),
-      kDispatchKey: Symbol("dispatch key"),
-      kDefaultHeaders: Symbol("default headers"),
-      kDefaultTrailers: Symbol("default trailers"),
-      kContentLength: Symbol("content length"),
-      kMockAgent: Symbol("mock agent"),
-      kMockAgentSet: Symbol("mock agent set"),
-      kMockAgentGet: Symbol("mock agent get"),
-      kMockDispatch: Symbol("mock dispatch"),
-      kClose: Symbol("close"),
-      kOriginalClose: Symbol("original agent close"),
-      kOrigin: Symbol("origin"),
-      kIsMockActive: Symbol("is mock active"),
-      kNetConnect: Symbol("net connect"),
-      kGetNetConnect: Symbol("get net connect"),
-      kConnected: Symbol("connected")
+      kAgent: /* @__PURE__ */ Symbol("agent"),
+      kOptions: /* @__PURE__ */ Symbol("options"),
+      kFactory: /* @__PURE__ */ Symbol("factory"),
+      kDispatches: /* @__PURE__ */ Symbol("dispatches"),
+      kDispatchKey: /* @__PURE__ */ Symbol("dispatch key"),
+      kDefaultHeaders: /* @__PURE__ */ Symbol("default headers"),
+      kDefaultTrailers: /* @__PURE__ */ Symbol("default trailers"),
+      kContentLength: /* @__PURE__ */ Symbol("content length"),
+      kMockAgent: /* @__PURE__ */ Symbol("mock agent"),
+      kMockAgentSet: /* @__PURE__ */ Symbol("mock agent set"),
+      kMockAgentGet: /* @__PURE__ */ Symbol("mock agent get"),
+      kMockDispatch: /* @__PURE__ */ Symbol("mock dispatch"),
+      kClose: /* @__PURE__ */ Symbol("close"),
+      kOriginalClose: /* @__PURE__ */ Symbol("original agent close"),
+      kOrigin: /* @__PURE__ */ Symbol("origin"),
+      kIsMockActive: /* @__PURE__ */ Symbol("is mock active"),
+      kNetConnect: /* @__PURE__ */ Symbol("net connect"),
+      kGetNetConnect: /* @__PURE__ */ Symbol("get net connect"),
+      kConnected: /* @__PURE__ */ Symbol("connected")
     };
   }
 });
@@ -11068,12 +11072,12 @@ var require_proxy_agent = __commonJS({
     var DispatcherBase = require_dispatcher_base();
     var { InvalidArgumentError, RequestAbortedError } = require_errors();
     var buildConnector = require_connect();
-    var kAgent = Symbol("proxy agent");
-    var kClient = Symbol("proxy client");
-    var kProxyHeaders = Symbol("proxy headers");
-    var kRequestTls = Symbol("request tls settings");
-    var kProxyTls = Symbol("proxy tls settings");
-    var kConnectEndpoint = Symbol("connect endpoint function");
+    var kAgent = /* @__PURE__ */ Symbol("proxy agent");
+    var kClient = /* @__PURE__ */ Symbol("proxy client");
+    var kProxyHeaders = /* @__PURE__ */ Symbol("proxy headers");
+    var kRequestTls = /* @__PURE__ */ Symbol("request tls settings");
+    var kProxyTls = /* @__PURE__ */ Symbol("proxy tls settings");
+    var kConnectEndpoint = /* @__PURE__ */ Symbol("connect endpoint function");
     function defaultProtocolPort(protocol) {
       return protocol === "https:" ? 443 : 80;
     }
@@ -11480,7 +11484,7 @@ var require_RetryHandler = __commonJS({
 var require_global2 = __commonJS({
   "node_modules/undici/lib/global.js"(exports2, module2) {
     "use strict";
-    var globalDispatcher = Symbol.for("undici.globalDispatcher.1");
+    var globalDispatcher = /* @__PURE__ */ Symbol.for("undici.globalDispatcher.1");
     var { InvalidArgumentError } = require_errors();
     var Agent = require_agent();
     if (getGlobalDispatcher() === void 0) {
@@ -11555,8 +11559,8 @@ var require_headers = __commonJS({
     var util = require("util");
     var { webidl } = require_webidl();
     var assert = require("assert");
-    var kHeadersMap = Symbol("headers map");
-    var kHeadersSortedMap = Symbol("headers map sorted");
+    var kHeadersMap = /* @__PURE__ */ Symbol("headers map");
+    var kHeadersSortedMap = /* @__PURE__ */ Symbol("headers map sorted");
     function isHTTPWhiteSpaceCharCode(code) {
       return code === 10 || code === 13 || code === 9 || code === 32;
     }
@@ -11883,7 +11887,7 @@ var require_headers = __commonJS({
           callbackFn.apply(thisArg, [value, key, this]);
         }
       }
-      [Symbol.for("nodejs.util.inspect.custom")]() {
+      [/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")]() {
         webidl.brandCheck(this, _Headers);
         return this[kHeadersList];
       }
@@ -12343,7 +12347,7 @@ var require_request2 = __commonJS({
     var assert = require("assert");
     var { getMaxListeners, setMaxListeners, getEventListeners, defaultMaxListeners } = require("events");
     var TransformStream = globalThis.TransformStream;
-    var kAbortController = Symbol("abortController");
+    var kAbortController = /* @__PURE__ */ Symbol("abortController");
     var requestFinalizer = new FinalizationRegistry(({ signal, abort }) => {
       signal.removeEventListener("abort", abort);
     });
@@ -13728,7 +13732,7 @@ var require_fetch = __commonJS({
             fetchParams.controller.terminate(e);
           }
         };
-        requestBody = async function* () {
+        requestBody = (async function* () {
           try {
             for await (const bytes of request.body.stream) {
               yield* processBodyChunk(bytes);
@@ -13737,7 +13741,7 @@ var require_fetch = __commonJS({
           } catch (err) {
             processBodyError(err);
           }
-        }();
+        })();
       }
       try {
         const { body, status, statusText, headersList, socket } = await dispatch({ body: requestBody });
@@ -13989,12 +13993,12 @@ var require_symbols3 = __commonJS({
   "node_modules/undici/lib/fileapi/symbols.js"(exports2, module2) {
     "use strict";
     module2.exports = {
-      kState: Symbol("FileReader state"),
-      kResult: Symbol("FileReader result"),
-      kError: Symbol("FileReader error"),
-      kLastProgressEventFired: Symbol("FileReader last progress event fired timestamp"),
-      kEvents: Symbol("FileReader events"),
-      kAborted: Symbol("FileReader aborted")
+      kState: /* @__PURE__ */ Symbol("FileReader state"),
+      kResult: /* @__PURE__ */ Symbol("FileReader result"),
+      kError: /* @__PURE__ */ Symbol("FileReader error"),
+      kLastProgressEventFired: /* @__PURE__ */ Symbol("FileReader last progress event fired timestamp"),
+      kEvents: /* @__PURE__ */ Symbol("FileReader events"),
+      kAborted: /* @__PURE__ */ Symbol("FileReader aborted")
     };
   }
 });
@@ -14004,7 +14008,7 @@ var require_progressevent = __commonJS({
   "node_modules/undici/lib/fileapi/progressevent.js"(exports2, module2) {
     "use strict";
     var { webidl } = require_webidl();
-    var kState = Symbol("ProgressEvent state");
+    var kState = /* @__PURE__ */ Symbol("ProgressEvent state");
     var ProgressEvent = class _ProgressEvent extends Event {
       constructor(type2, eventInitDict = {}) {
         type2 = webidl.converters.DOMString(type2);
@@ -15954,14 +15958,14 @@ var require_symbols5 = __commonJS({
   "node_modules/undici/lib/websocket/symbols.js"(exports2, module2) {
     "use strict";
     module2.exports = {
-      kWebSocketURL: Symbol("url"),
-      kReadyState: Symbol("ready state"),
-      kController: Symbol("controller"),
-      kResponse: Symbol("response"),
-      kBinaryType: Symbol("binary type"),
-      kSentClose: Symbol("sent close"),
-      kReceivedClose: Symbol("received close"),
-      kByteParser: Symbol("byte parser")
+      kWebSocketURL: /* @__PURE__ */ Symbol("url"),
+      kReadyState: /* @__PURE__ */ Symbol("ready state"),
+      kController: /* @__PURE__ */ Symbol("controller"),
+      kResponse: /* @__PURE__ */ Symbol("response"),
+      kBinaryType: /* @__PURE__ */ Symbol("binary type"),
+      kSentClose: /* @__PURE__ */ Symbol("sent close"),
+      kReceivedClose: /* @__PURE__ */ Symbol("received close"),
+      kByteParser: /* @__PURE__ */ Symbol("byte parser")
     };
   }
 });
@@ -17288,7 +17292,7 @@ var require_undici = __commonJS({
 var require_lib = __commonJS({
   "node_modules/@actions/http-client/lib/index.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -17297,13 +17301,13 @@ var require_lib = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -18403,7 +18407,7 @@ var require_summary = __commonJS({
 var require_path_utils = __commonJS({
   "node_modules/@actions/core/lib/path-utils.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -18412,13 +18416,13 @@ var require_path_utils = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -18452,18 +18456,18 @@ var require_path_utils = __commonJS({
 var require_io_util = __commonJS({
   "node_modules/@actions/io/lib/io-util.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -18625,18 +18629,18 @@ var require_io_util = __commonJS({
 var require_io = __commonJS({
   "node_modules/@actions/io/lib/io.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -18873,18 +18877,18 @@ var require_io = __commonJS({
 var require_toolrunner = __commonJS({
   "node_modules/@actions/exec/lib/toolrunner.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -19357,18 +19361,18 @@ var require_toolrunner = __commonJS({
 var require_exec = __commonJS({
   "node_modules/@actions/exec/lib/exec.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -19464,7 +19468,7 @@ var require_exec = __commonJS({
 var require_platform = __commonJS({
   "node_modules/@actions/core/lib/platform.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -19473,13 +19477,13 @@ var require_platform = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -19583,7 +19587,7 @@ var require_platform = __commonJS({
 var require_core = __commonJS({
   "node_modules/@actions/core/lib/core.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -19592,13 +19596,13 @@ var require_core = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -19871,7 +19875,7 @@ var require_context = __commonJS({
 var require_utils3 = __commonJS({
   "node_modules/@actions/github/lib/internal/utils.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -19880,13 +19884,13 @@ var require_utils3 = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -23777,7 +23781,7 @@ var require_dist_node10 = __commonJS({
 var require_utils4 = __commonJS({
   "node_modules/@actions/github/lib/utils.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -23786,13 +23790,13 @@ var require_utils4 = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -23837,7 +23841,7 @@ var require_utils4 = __commonJS({
 var require_github = __commonJS({
   "node_modules/@actions/github/lib/github.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -23846,13 +23850,13 @@ var require_github = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -25149,16 +25153,21 @@ var require_loader = __commonJS({
         state.result += _result;
       }
     }
+    function chargeMergeWork(state) {
+      state.totalMergeKeys++;
+      if (state.maxTotalMergeKeys !== -1 && state.totalMergeKeys > state.maxTotalMergeKeys) {
+        throwError(state, "merge keys exceeded maxTotalMergeKeys (" + state.maxTotalMergeKeys + ")");
+      }
+    }
     function mergeMappings(state, destination, source, overridableKeys) {
       if (!common2.isObject(source)) {
         throwError(state, "cannot merge mappings; the provided source object is unacceptable");
       }
+      chargeMergeWork(state);
       const sourceKeys = Object.keys(source);
       for (let index = 0, quantity = sourceKeys.length; index < quantity; index += 1) {
         const key = sourceKeys[index];
-        if (state.maxTotalMergeKeys !== -1 && ++state.totalMergeKeys > state.maxTotalMergeKeys) {
-          throwError(state, "merge keys exceeded maxTotalMergeKeys (" + state.maxTotalMergeKeys + ")");
-        }
+        chargeMergeWork(state);
         if (!_hasOwnProperty.call(destination, key)) {
           setProperty(destination, key, source[key]);
           overridableKeys[key] = true;
@@ -25186,6 +25195,9 @@ var require_loader = __commonJS({
       }
       if (keyTag === "tag:yaml.org,2002:merge") {
         if (Array.isArray(valueNode)) {
+          if (valueNode.length > 100) {
+            throwError(state, "abnormal merge sequence size");
+          }
           for (let index = 0, quantity = valueNode.length; index < quantity; index += 1) {
             mergeMappings(state, _result, valueNode[index], overridableKeys);
           }
@@ -26483,7 +26495,7 @@ var require_dumper = __commonJS({
       return quotingType === QUOTING_TYPE_DOUBLE ? STYLE_DOUBLE : STYLE_SINGLE;
     }
     function writeScalar(state, string, level, iskey, inblock) {
-      state.dump = function() {
+      state.dump = (function() {
         if (string.length === 0) {
           return state.quotingType === QUOTING_TYPE_DOUBLE ? '""' : "''";
         }
@@ -26522,7 +26534,7 @@ var require_dumper = __commonJS({
           default:
             throw new YAMLException2("impossible error: invalid scalar style");
         }
-      }();
+      })();
     }
     function blockHeader(string, indentPerLevel) {
       const indentIndicator = needIndentIndicator(string) ? String(indentPerLevel) : "";
@@ -26536,12 +26548,12 @@ var require_dumper = __commonJS({
     }
     function foldString(string, width) {
       const lineRe = /(\n+)([^\n]*)/g;
-      let result = function() {
+      let result = (function() {
         let nextLF = string.indexOf("\n");
         nextLF = nextLF !== -1 ? nextLF : string.length;
         lineRe.lastIndex = nextLF;
         return foldLine(string.slice(0, nextLF), width);
-      }();
+      })();
       let prevMoreIndented = string[0] === "\n" || string[0] === " ";
       let moreIndented;
       let match;
@@ -27301,7 +27313,7 @@ var require_profil = __commonJS({
 var require_dist = __commonJS({
   "../attesta-core/dist/index.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -27310,10 +27322,10 @@ var require_dist = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
+    }));
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
       for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
     };
@@ -28813,16 +28825,21 @@ function requireLoader() {
       state.result += _result;
     }
   }
+  function chargeMergeWork(state) {
+    state.totalMergeKeys++;
+    if (state.maxTotalMergeKeys !== -1 && state.totalMergeKeys > state.maxTotalMergeKeys) {
+      throwError(state, "merge keys exceeded maxTotalMergeKeys (" + state.maxTotalMergeKeys + ")");
+    }
+  }
   function mergeMappings(state, destination, source, overridableKeys) {
     if (!common2.isObject(source)) {
       throwError(state, "cannot merge mappings; the provided source object is unacceptable");
     }
+    chargeMergeWork(state);
     const sourceKeys = Object.keys(source);
     for (let index = 0, quantity = sourceKeys.length; index < quantity; index += 1) {
       const key = sourceKeys[index];
-      if (state.maxTotalMergeKeys !== -1 && ++state.totalMergeKeys > state.maxTotalMergeKeys) {
-        throwError(state, "merge keys exceeded maxTotalMergeKeys (" + state.maxTotalMergeKeys + ")");
-      }
+      chargeMergeWork(state);
       if (!_hasOwnProperty.call(destination, key)) {
         setProperty(destination, key, source[key]);
         overridableKeys[key] = true;
@@ -28850,6 +28867,9 @@ function requireLoader() {
     }
     if (keyTag === "tag:yaml.org,2002:merge") {
       if (Array.isArray(valueNode)) {
+        if (valueNode.length > 100) {
+          throwError(state, "abnormal merge sequence size");
+        }
         for (let index = 0, quantity = valueNode.length; index < quantity; index += 1) {
           mergeMappings(state, _result, valueNode[index], overridableKeys);
         }
@@ -30147,7 +30167,7 @@ function requireDumper() {
     return quotingType === QUOTING_TYPE_DOUBLE ? STYLE_DOUBLE : STYLE_SINGLE;
   }
   function writeScalar(state, string, level, iskey, inblock) {
-    state.dump = function() {
+    state.dump = (function() {
       if (string.length === 0) {
         return state.quotingType === QUOTING_TYPE_DOUBLE ? '""' : "''";
       }
@@ -30186,7 +30206,7 @@ function requireDumper() {
         default:
           throw new YAMLException2("impossible error: invalid scalar style");
       }
-    }();
+    })();
   }
   function blockHeader(string, indentPerLevel) {
     const indentIndicator = needIndentIndicator(string) ? String(indentPerLevel) : "";
@@ -30200,12 +30220,12 @@ function requireDumper() {
   }
   function foldString(string, width) {
     const lineRe = /(\n+)([^\n]*)/g;
-    let result = function() {
+    let result = (function() {
       let nextLF = string.indexOf("\n");
       nextLF = nextLF !== -1 ? nextLF : string.length;
       lineRe.lastIndex = nextLF;
       return foldLine(string.slice(0, nextLF), width);
-    }();
+    })();
     let prevMoreIndented = string[0] === "\n" || string[0] === " ";
     let moreIndented;
     let match;
