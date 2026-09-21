@@ -119,3 +119,29 @@ jobs:
             echo "::error::dist/ passt nicht zur Quelle. npm run build laufen lassen und mitcommitten."
             exit 1
           }
+
+  identitaet:
+    # ID-07 des Produktisierungsplans: Ein Commit mit fremder Adresse laesst den Lauf rot
+    # werden. Gleichlautend in fuenf Repositorien, Quelle ist
+    # attesta-plattform/.github/workflows/pruefen.yml. Aenderung dort zuerst, dann nachziehen.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Identitaet aller Commits
+        run: |
+          # Identitaetspruefung, ID-07 des Produktisierungsplans.
+          # Jeder Commit traegt Autor und Committer aus dieser Liste. GitHub steht darin, weil
+          # Merges ueber die Weboberflaeche und die Pruef-Merges von Pull Requests GitHub als
+          # Committer fuehren. Die Felder sind ueber .mailmap aufgeloest, deshalb liegt sie im
+          # Repositorium. Eine Agentenadresse ist nicht erlaubt: Agenten stehen als
+          # Co-Authored-By im Commit-Text, nie als Autor.
+          erlaubt='^(Michael Löbbecke <michael.loebbecke@prostructive.de>|GitHub <noreply@github.com>)$'
+          fremd=$(git log --all --format='%H %aN <%aE>%n%H %cN <%cE>' | grep -vE "^[0-9a-f]{40} ${erlaubt#^}" | sort -u)
+          if [ -n "$fremd" ]; then
+            echo "::error::Commits mit fremder Identitaet. Zulaessig ist nur der Name und die Adresse aus .mailmap, Agenten gehoeren als Co-Authored-By in den Commit-Text."
+            echo "$fremd"
+            exit 1
+          fi
+          echo "Identitaet: $(git rev-list --all --count) Commits, alle unter der zulaessigen Identitaet."
