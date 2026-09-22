@@ -96,6 +96,15 @@ jobs:
         working-directory: attesta
         run: npm test
 
+      # W-13 der Produktisierung: Bis zum 22.09.2026 lief hier kein Audit, und das war
+      # kein Versehen, sondern eine festgehaltene Abweichung. `undici` trug eine hohe
+      # Luecke, die Kette liess sich nicht ohne Weiteres heben, und ein Schritt, der
+      # dauerhaft rot steht, erzieht zum Wegsehen. Seit dem Umstieg auf @actions/core 2
+      # und @actions/github 8 ist die Kette sauber, und damit traegt der Schritt.
+      - name: Bekannte Schwachstellen
+        working-directory: attesta
+        run: npm run audit
+
       # Die Seiten unter docs/ und die erzeugten Regeldateien werden aus dem Regelsatz
       # erzeugt. Erzeugt und nicht getippt heisst: Sie koennen von ihm nicht abweichen.
       # Diese Zusage haelt nur, solange sie geprueft wird.
