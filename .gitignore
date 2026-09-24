@@ -2,3 +2,13 @@ node_modules/
 lib/
 *.tsbuildinfo
 .DS_Store
+
+# Werkzeuge des Arbeitsplatzes, kein Projektinhalt.
+# .claude/settings.local.json sind lokale Einstellungen, der Rest sind installierte
+# Agenten-Skills von Dritten (eigene Lizenzen, eigene Herkunft). Beides gehoert nicht
+# in ein Repositorium dieses Vorhabens, siehe KZ-01.
+# Soll projekteigene Konfiguration geteilt werden, hier gezielt ausnehmen, z. B.
+#   !.claude/settings.json
+.claude/
+.github/hooks/
+.github/skills/
