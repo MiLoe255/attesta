@@ -91,3 +91,16 @@ Vollständige Liste, alt nach neu:
 - `f484db7` nach `89eedff`
 - `f9a3066` nach `76977af`
 - `fbf00a1` nach `3292370`
+
+## Aufgeräumte Zweige, 22.09.2026
+
+**Paket KZ-05 des Produktisierungsplans, auf die übrigen Repositorien ausgedehnt.** vier erledigte Zweige geschlossen. **Alle waren Vorfahren von `main`**, je Zweig mit `git merge-base --is-ancestor` geprüft, unmittelbar vor dem Löschen: Kein Commit war nur dort.
+
+Die Liste steht hier, weil dieses Dokument den Refs-Bestand führt und der Spiegelklon vom 21.09.2026 eine Refs-Zahl nennt. Die Spalte sagt, wo der Zweigname erhalten bleibt: Fast alle wurden über einen Pull Request zusammengeführt, und der Merge-Commit nennt den Namen. Wo das nicht so war, hält ihn ein Tag.
+
+| Zweig | Datum | Name erhalten in |
+|---|---|---|
+| `ap-m01-kernbibliothek` | 2026-08-28 | Tag `archiv/ap-m01-kernbibliothek` |
+| `dep-attesta` | 2026-09-21 | Merge-Commit |
+| `identitaet-ci` | 2026-09-21 | Merge-Commit |
+| `kon-01-hoheit` | 2026-09-21 | Merge-Commit |
